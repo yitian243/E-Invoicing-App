@@ -1,0 +1,328 @@
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 240px;
+  background: #10316B;
+  color: white;
+  padding: 1rem 0;
+  transition: width 0.3s, transform 0.3s;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar.closed {
+  width: 60px;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Account Section Styles */
+.account-section {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+.account-info:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.account-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.account-details {
+  flex: 1;
+  overflow: hidden;
+}
+
+.account-name {
+  display: block;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-role {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.account-dropdown-icon {
+  margin-left: 10px;
+}
+
+/* Account Dropdown Styles */
+.account-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #0D2755;
+  border-radius: 0 0 5px 5px;
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 0 1rem;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  color: white;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0;
+}
+
+/* Nav Menu Styles */
+.nav-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.nav-item {
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.nav-item a {
+  display: flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+  padding: 0.8rem 1.5rem;
+  width: 100%;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-item i {
+  margin-right: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  margin-left: 0;
+  background: #f5f6fa;
+  padding: 2rem;
+  transition: margin-left 0.3s;
+}
+
+.main-content.full-width {
+  margin-left: 0;
+}
+
+/* Top Header Styles */
+.top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.menu-toggle {
+  font-size: 1.5rem;
+  cursor: pointer;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  background: #10316B;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  display: none;
+}
+
+/* Quick Actions Styles */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.action-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.action-card:hover {
+  transform: translateY(-3px);
+}
+
+.action-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Summary Cards Styles */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.summary-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.summary-card h4 {
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.summary-card h2 {
+  font-size: 1.8rem;
+  color: #10316B;
+}
+
+/* Button Styles */
+.btn-primary {
+  background: #10316B;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #0D2755;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    height: 100%;
+    z-index: 99;
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out, width 0.3s;
+  }
+  
+  .sidebar.closed {
+    transform: translateX(-100%);
+    width: 240px;
+  }
+  
+  .menu-toggle {
+    display: block;
+  }
+  
+  .nav-item span {
+    display: inline;
+  }
+  
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-content {
+    width: 100%;
+  }
+  
+  /* Account section mobile adjustments */
+  .sidebar.closed .account-info {
+    justify-content: center;
+  }
+  
+  .sidebar.closed .account-details,
+  .sidebar.closed .account-dropdown-icon {
+    display: none;
+  }
+  
+  .sidebar.closed .account-avatar {
+    margin-right: 0;
+  }
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.logout-btn i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}

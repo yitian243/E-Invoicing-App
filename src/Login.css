@@ -1,0 +1,354 @@
+/* Login Page Styles */
+.login-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Left Side - Branding */
+.login-left {
+  flex: 1;
+  background: linear-gradient(135deg, #10316B, #0D2755);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  padding: 2rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.login-brand {
+  max-width: 400px;
+  text-align: center;
+}
+
+.login-brand h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.login-brand p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+/* Right Side - Login/Register Form */
+.login-right {
+  flex: 1;
+  display: flex;
+  align-items: flex-start; /* Changed from center to prevent scrolling issues */
+  justify-content: center;
+  padding: 3rem 2rem;
+  background-color: #f5f6fa;
+}
+
+.login-form-container {
+  width: 100%;
+  max-width: 450px;
+  padding: 2.5rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  margin: 2rem 0;
+}
+
+.login-form-container h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.login-intro {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.error-message {
+  background-color: #ffeaea;
+  color: #dc3545;
+  padding: 0.8rem 1rem;
+  border-radius: 5px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* Form Styles */
+.login-form .form-group,
+.register-form .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.login-form label,
+.register-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.password-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgot-password {
+  font-size: 0.9rem;
+  color: #10316B;
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Input with icon styling */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.login-form input[type="email"],
+.login-form input[type="password"],
+.register-form input[type="text"],
+.register-form input[type="email"],
+.register-form input[type="password"] {
+  width: 100%;
+  padding: 1rem 1rem 1rem 2.5rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Select with icon styling - fixed for overlap */
+.select-with-icon {
+  position: relative;
+}
+
+.select-with-icon i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.select-with-icon select {
+  width: 100%;
+  padding: 1rem 2.5rem 1rem 3.5rem; /* Increased left padding to prevent overlap */
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1em;
+  text-indent: 5px; /* Add text indent to further push text away from icon */
+  color: #333;
+}
+
+.login-form input:focus,
+.register-form input:focus,
+.register-form select:focus {
+  outline: none;
+  border-color: #10316B;
+  box-shadow: 0 0 0 3px rgba(16, 49, 107, 0.1);
+}
+
+/* Remember Me & Terms Agreement Checkbox */
+.remember-me,
+.terms-agreement {
+  margin-bottom: 1.5rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  user-select: none;
+  color: #555;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: #f5f5f5;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #10316B;
+  border-color: #10316B;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 7px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.terms-agreement a {
+  color: #10316B;
+  text-decoration: none;
+}
+
+.terms-agreement a:hover {
+  text-decoration: underline;
+}
+
+/* Login/Register Button */
+.login-button {
+  width: 100%;
+  padding: 1rem;
+  background-color: #10316B;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover {
+  background-color: #0D2755;
+}
+
+.login-button:disabled {
+  background-color: #7D9AC9;
+  cursor: not-allowed;
+}
+
+/* Login/Register Footer */
+.login-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.login-footer p {
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.toggle-form-btn {
+  background: none;
+  border: none;
+  color: #10316B;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.toggle-form-btn:hover {
+  text-decoration: underline;
+}
+
+.demo-credentials {
+  margin-top: 1rem;
+  color: #999;
+}
+
+/* Remove scrollbar from register form */
+.register-form {
+  overflow: visible;
+  max-height: none;
+  padding-right: 0;
+}
+
+/* For taller screens, ensure the form is vertically centered */
+@media (min-height: 900px) {
+  .login-right {
+    align-items: center;
+  }
+}
+
+/* For shorter screens, allow the right side to scroll if needed */
+@media (max-height: 800px) {
+  .login-right {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+  
+  .login-form-container {
+    margin: 2rem 0;
+  }
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .login-container {
+    flex-direction: column;
+  }
+  
+  .login-left {
+    min-height: 200px;
+    height: auto;
+    position: relative;
+  }
+  
+  .login-brand h1 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-form-container {
+    padding: 1.5rem;
+  }
+  
+  .login-right {
+    padding: 1.5rem 1rem;
+  }
+}
