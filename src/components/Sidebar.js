@@ -102,6 +102,12 @@ function Sidebar() {
               <span>Settings</span>
             </Link>
           </li>
+          <li className={`nav-item ${isActive('/business') ? 'active' : ''}`}>
+            <Link to="/business">
+              <i className="fas fa-building"></i>
+              <span>Business</span>
+            </Link>
+          </li>
         </ul>
       </nav>
       <div className="menu-toggle" onClick={toggleSidebar}>
