@@ -12,7 +12,8 @@ import InvoiceValidation from './components/InvoiceValidation';
 import Login from './components/Login';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import Business from './components/Business';
+import Signup from './components/Signup';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
@@ -34,6 +36,7 @@ function App() {
               <Route path="/InvoiceSending" element={<InvoiceSending />} />
               <Route path="/Profile" element={<Profile />} />
               <Route path="/contacts" element={<Contacts />} />
+              <Route path="/business" element={<Business />} />
             </Route>
             
             {/* Fallback route */}
