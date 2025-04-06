@@ -15,14 +15,16 @@ function Login() {
   });
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Check if user is already logged in
+  // check if user is already logged in
   useEffect(() => {
+    // change to fetch from sql database
     const token = localStorage.getItem('auth_type');
     if (token) {
       navigate('/dashboard');
     }
   }, [navigate]);
 
+  // dynamically handles input changes, updating credentials
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCredentials(prev => ({
@@ -34,9 +36,7 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
+        
     setLoading(true);
     
     try {
@@ -50,17 +50,6 @@ function Login() {
     }
   };
 
-  const validateForm = () => {
-    if (!credentials.email) {
-      setError('Email is required');
-      return false;
-    }
-    if (!credentials.password) {
-      setError('Password is required');
-      return false;
-    }
-    return true;
-  };
 
   return (
     <div className="login-container">

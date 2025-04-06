@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
 
   // Login function
   const login = async (email, password, rememberMe) => {
+    // change to fetch from sql database
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const userMatch = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     

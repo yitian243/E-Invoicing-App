@@ -19,49 +19,6 @@ function InvoiceHistory() {
         const savedInvoices = localStorage.getItem('invoices');
         if (savedInvoices) {
           setInvoices(JSON.parse(savedInvoices));
-        } else {
-          // Sample data if nothing is in localStorage
-          const sampleInvoices = [
-            {
-              id: '1',
-              invoiceNumber: 'INV-001',
-              client: 'Acme Corporation',
-              issueDate: '2025-03-01',
-              dueDate: '2025-03-31',
-              total: 1250.00,
-              status: 'paid',
-              items: [
-                { description: 'Website Design', quantity: 1, unitPrice: 1000, taxRate: 10 },
-                { description: 'Domain Registration', quantity: 2, unitPrice: 15, taxRate: 0 }
-              ]
-            },
-            {
-              id: '2',
-              invoiceNumber: 'INV-002',
-              client: 'Wayne Enterprises',
-              issueDate: '2025-03-05',
-              dueDate: '2025-04-04',
-              total: 3500.00,
-              status: 'pending',
-              items: [
-                { description: 'Mobile App Development', quantity: 1, unitPrice: 3500, taxRate: 0 }
-              ]
-            },
-            {
-              id: '3',
-              invoiceNumber: 'INV-003',
-              client: 'Stark Industries',
-              issueDate: '2025-02-15',
-              dueDate: '2025-03-17',
-              total: 7850.00,
-              status: 'overdue',
-              items: [
-                { description: 'Custom Software Development', quantity: 1, unitPrice: 7500, taxRate: 5 }
-              ]
-            }
-          ];
-          setInvoices(sampleInvoices);
-          localStorage.setItem('invoices', JSON.stringify(sampleInvoices));
         }
       } catch (error) {
         console.error('Error fetching invoices:', error);
