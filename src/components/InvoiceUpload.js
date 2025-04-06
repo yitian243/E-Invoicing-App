@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import './../InvoiceUpload.css';
+import '../styles/InvoiceUpload.css';
 import Sidebar from './Sidebar';
 
 function InvoiceUpload() {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import './../Profile.css';
+import '../styles/Profile.css';
 import Sidebar from './Sidebar';
 
 function Profile() {
