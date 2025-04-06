@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 import './../Profile.css';
 import Sidebar from './Sidebar';
 
 function Profile() {
-  // Sample user data - replace with API/auth system data
-  const [user, setUser] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    avatar: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
-    phone: "+1 (555) 123-4567",
-    role: "Admin",
-    company: "Acme Inc.",
-    address: "123 Business Ave, Suite 500, New York, NY 10001"
-  });
-
+  const { currentUser, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({...user});
+  const [formData, setFormData] = useState({
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    avatar: currentUser?.avatar || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
+    phone: currentUser?.phone || '',
+    role: currentUser?.role || 'User',
+    address: currentUser?.address || ''
+    // Removed company field
+  });
+  const [businessInfo, setBusinessInfo] = useState(null);
+
+  useEffect(() => {
+    const loadBusinessInfo = () => {
+      if (currentUser?.email) {
+        try {
+          const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+          const userBusiness = businesses.find(b => 
+            b.members.some(m => m.email === currentUser.email)
+          );
+          
+          if (userBusiness) {
+            setBusinessInfo(userBusiness);
+          }
+        } catch (err) {
+          console.error('Failed to load business info:', err);
+        }
+      }
+    };
+
+    loadBusinessInfo();
+  }, [currentUser]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -25,11 +46,14 @@ function Profile() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Send this data to API
-    setUser(formData);
-    setIsEditing(false);
+    try {
+      await updateProfile(formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
   };
 
   return (
@@ -49,7 +73,7 @@ function Profile() {
         <div className="profile-container">
           <div className="profile-header">
             <div className="profile-avatar-container">
-              <img src={user.avatar} alt="Profile avatar" className="profile-avatar" />
+              <img src={formData.avatar} alt="Profile avatar" className="profile-avatar" />
               {isEditing && (
                 <div className="avatar-upload">
                   <i className="fas fa-camera"></i>
@@ -58,8 +82,11 @@ function Profile() {
               )}
             </div>
             <div className="profile-info">
-              <h2>{user.name}</h2>
-              <p className="profile-role">{user.role} at {user.company}</p>
+              <h2>{formData.name}</h2>
+              <p className="profile-role">
+                <i className="fas fa-user-tag"></i>
+                {formData.role}
+              </p>
             </div>
           </div>
           
@@ -140,30 +167,59 @@ function Profile() {
                   <div className="detail-label">
                     <i className="fas fa-envelope"></i> Email
                   </div>
-                  <div className="detail-value">{user.email}</div>
+                  <div className="detail-value">{formData.email}</div>
                 </div>
                 
                 <div className="detail-item">
                   <div className="detail-label">
                     <i className="fas fa-phone"></i> Phone
                   </div>
-                  <div className="detail-value">{user.phone}</div>
-                </div>
-                
-                <div className="detail-item">
-                  <div className="detail-label">
-                    <i className="fas fa-building"></i> Company
-                  </div>
-                  <div className="detail-value">{user.company}</div>
+                  <div className="detail-value">{formData.phone}</div>
                 </div>
                 
                 <div className="detail-item full-width">
                   <div className="detail-label">
                     <i className="fas fa-map-marker-alt"></i> Address
                   </div>
-                  <div className="detail-value">{user.address}</div>
+                  <div className="detail-value">{formData.address}</div>
                 </div>
               </div>
+              {businessInfo && (
+                <div className="business-section">
+                  <h3>Business Information</h3>
+                  <div className="details-grid">
+                    <div className="detail-item">
+                      <div className="detail-label">
+                        <i className="fas fa-building"></i> Business Name
+                      </div>
+                      <div className="detail-value">{businessInfo.name}</div>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <div className="detail-label">
+                        <i className="fas fa-user-tag"></i> Role
+                      </div>
+                      <div className="detail-value">{formData.role}</div>
+                    </div>
+                    
+                    {formData.role === 'admin' && (
+                      <div className="detail-item">
+                        <div className="detail-label">
+                          <i className="fas fa-id-card"></i> Business ID
+                        </div>
+                        <div className="detail-value">{businessInfo.id}</div>
+                      </div>
+                    )}
+                    
+                    <div className="detail-item">
+                      <div className="detail-label">
+                        <i className="fas fa-envelope"></i> Business Email
+                      </div>
+                      <div className="detail-value">{businessInfo.email}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           

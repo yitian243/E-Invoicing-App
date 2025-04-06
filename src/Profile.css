@@ -214,6 +214,47 @@
   color: white;
 }
 
+/* Business Section */
+.business-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+}
+
+.business-section h3 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.detail-label i {
+  width: 16px;
+}
+
+.detail-value {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+}
+
 /* Media Queries */
 @media (max-width: 768px) {
   .profile-header {
