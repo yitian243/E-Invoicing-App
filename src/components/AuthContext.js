@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
 // Login function
 const login = async (email, password, rememberMe) => {
   try {
-    const response = await fetch('http://localhost:4000/api/users/login', {
+    const response = await fetch('http://localhost:5000/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -89,7 +89,7 @@ const login = async (email, password, rememberMe) => {
 const register = async (userData) => {
   try {
     // Call the backend signup API
-    const response = await fetch('http://localhost:4000/api/users/signup', {
+    const response = await fetch('http://localhost:5000/api/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

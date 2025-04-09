@@ -40,8 +40,8 @@ function Signup() {
       setError('Password is required');
       return false;
     }
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -57,56 +57,58 @@ function Signup() {
 
   const checkEmailExists = async (email) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/users/check-email/${email}`);
+      const response = await fetch(`http://localhost:4000/api/auth/check-email/${email}`);
       if (!response.ok) {
         throw new Error('Failed to check email');
       }
       const data = await response.json();
       return data.exists;
     } catch (err) {
+      console.error('Email check error:', err);
       return false;
     }
   };
 
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      
-      try {
-        if (!validateForm()) {
-          return;
-        }
-        
-        setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-        // Check if email already exists
-        const emailExists = await checkEmailExists(formData.email);
-        if (emailExists) {
-          setError('Email already registered');
-          setLoading(false);
-          return;
-        }
-    
-        // Prepare signup data
-        const signupData = {
-          name: formData.name,
-          email: formData.email.toLowerCase().trim(),
-          password: formData.password,
-          role: formData.role,
-          avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-        };
-    
-        // Send signup request
-        await register(signupData);
-    
-        // Auto login after registration
-        await login(formData.email, formData.password, true);
-        navigate('/dashboard');
-      } catch (err) {
-        setError(err.message || 'Registration failed');
-      } finally {
-        setLoading(false);
+    try {
+      if (!validateForm()) {
+        return;
       }
-    };
+      
+      setLoading(true);
+      
+      // Check if email already exists
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        setError('Email already registered');
+        setLoading(false);
+        return;
+      }
+      
+      // Prepare signup data
+      const signupData = {
+        name: formData.name,
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        role: formData.role,
+        avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+      };
+      
+      // Send signup request
+      await register(signupData);
+      
+      // Auto login after registration
+      await login(formData.email, formData.password, true);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Registration failed');
+      console.error('Signup error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="signup-container">
@@ -131,6 +133,7 @@ function Signup() {
                 type="text"
                 id="name"
                 name="name"
+                placeholder="Enter your full name"
                 value={formData.name}
                 onChange={handleInput}
                 required
@@ -143,6 +146,7 @@ function Signup() {
                 type="email"
                 id="email"
                 name="email"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInput}
                 required
@@ -155,9 +159,11 @@ function Signup() {
                 type="password"
                 id="password"
                 name="password"
+                placeholder="Create a password (min 6 characters)"
                 value={formData.password}
                 onChange={handleInput}
                 required
+                minLength="6"
               />
             </div>
 
@@ -167,9 +173,11 @@ function Signup() {
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
+                placeholder="Repeat your password"
                 value={formData.confirmPassword}
                 onChange={handleInput}
                 required
+                minLength="6"
               />
             </div>
 

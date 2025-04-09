@@ -1,6 +1,5 @@
 import { Request, Response, Router, NextFunction } from 'express';
 import validator from 'validator';
-import HttpError from 'http-errors';
 import { 
   getData, 
   setData, 
@@ -10,7 +9,6 @@ import {
   validateToken,
   User 
 } from './dataStore.js';
-import { TokenPayload } from './types.js';
 
 // Initialize router
 const router = Router();

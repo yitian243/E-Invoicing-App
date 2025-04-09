@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
@@ -76,22 +77,30 @@ export function getHash(str: string): string {
  * Initializes the data store by loading from file if it exists
  */
 export function initializeDataStore(): void {
-  try {
-    if (fs.existsSync('./database.json')) {
-      const fileData = fs.readFileSync('./database.json', 'utf8');
-      dataStore = JSON.parse(fileData);
-      
-      // Convert string dates back to Date objects
-      dataStore.users.forEach(user => {
-        user.lastLogin = new Date(user.lastLogin);
-        user.createdAt = new Date(user.createdAt);
-      });
-      
-    } else {
-    }
-  } catch (error) {
+    try {
+      const dbPath = path.resolve('./database.json');
+        
+      if (fs.existsSync(dbPath)) {
+        const fileData = fs.readFileSync(dbPath, 'utf8');
+        dataStore = JSON.parse(fileData);
+        
+        dataStore.users.forEach(user => {
+          user.lastLogin = new Date(user.lastLogin);
+          user.createdAt = new Date(user.createdAt);
+        });
+        
+      } else {
+        const dir = path.dirname(dbPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+  
+        fs.writeFileSync(dbPath, JSON.stringify(dataStore));
+        console.log('Created new database file');
+      }
+    } catch (error) {
+      console.error('Error initializing data store:', error);}
   }
-}
 
 /**
  * Resets the data store to initial state
@@ -138,5 +147,4 @@ export function validateToken(token: string): number | null {
   return null;
 }
 
-// Initialize the data store
 initializeDataStore();

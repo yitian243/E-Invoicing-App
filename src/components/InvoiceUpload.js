@@ -8,6 +8,7 @@ function InvoiceUpload() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [selectedInvoiceType, setSelectedInvoiceType] = useState('automatic');
+  // eslint-disable-next-line
   const [processingFile, setProcessingFile] = useState(false);
   const [processedData, setProcessedData] = useState(null);
   const fileInputRef = useRef(null);
