@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import './../InvoiceSending.css';
+import '../styles/InvoiceSending.css';
 import Sidebar from './Sidebar';
 
 function InvoiceSending() {

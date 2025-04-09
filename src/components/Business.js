@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import './../Business.css';
+import '../styles/Business.css';
 
 function Business() {
   const [isEditing, setIsEditing] = useState(false);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import './../Dashboard.css';
+import '../styles/Dashboard.css';
 import { useAuth } from './AuthContext';
 
 function Sidebar() {

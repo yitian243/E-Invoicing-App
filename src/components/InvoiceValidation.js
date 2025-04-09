@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import './../InvoiceValidation.css';
+import '../styles/InvoiceValidation.css';
 import Sidebar from './Sidebar';
 
 function InvoiceValidation() {

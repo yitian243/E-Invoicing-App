@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import './../Login.css';
+import '../styles/Login.css';
 
 function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
 
   const [credentials, setCredentials] = useState({
     email: '',
@@ -15,14 +15,14 @@ function Login() {
   });
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Check if user is already logged in
+  // Redirect if already authenticated
   useEffect(() => {
-    const token = localStorage.getItem('auth_type');
-    if (token) {
+    if (isAuthenticated) {
       navigate('/dashboard');
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
+  // Dynamically handles input changes, updating credentials
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCredentials(prev => ({
@@ -35,31 +35,26 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    // Basic client-side validation
+    if (!credentials.email || !credentials.password) {
+      setError('Please enter both email and password');
+      return;
+    }
     
     setLoading(true);
+    setError('');
     
     try {
-      await login(credentials.email, credentials.password, rememberMe);
+      console.log('Attempting login with:', credentials.email);
+      const user = await login(credentials.email, credentials.password, rememberMe);
+      console.log('Login successful:', user);
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid email or password');
-      console.error('Login error:', err);
+      console.error('Full login error:', err);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
-  };
-
-  const validateForm = () => {
-    if (!credentials.email) {
-      setError('Email is required');
-      return false;
-    }
-    if (!credentials.password) {
-      setError('Password is required');
-      return false;
-    }
-    return true;
   };
 
   return (

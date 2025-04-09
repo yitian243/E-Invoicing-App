@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './../Dashboard.css';
+import '../styles/Dashboard.css';
 import Sidebar from './Sidebar';
 
 function Dashboard() {

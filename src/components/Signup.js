@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import './../Signup.css';
+import '../styles/Signup.css';
 
 function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { register, login } = useAuth();
+  const { login, register } = useAuth();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -15,8 +15,6 @@ function Signup() {
     password: '',
     confirmPassword: '',
     role: 'staff',
-    company: '',
-    businessPassword: '',
     agreeToTerms: false
   });
 
@@ -42,16 +40,12 @@ function Signup() {
       setError('Password is required');
       return false;
     }
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      return false;
-    }
-    if (formData.company && !formData.businessPassword) {
-      setError('Business password is required when joining a company');
       return false;
     }
     if (!formData.agreeToTerms) {
@@ -61,64 +55,17 @@ function Signup() {
     return true;
   };
 
-  const handleBusinessCreation = async (newUser) => {
-    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
-    
-    if (formData.company) {
-      const businessExists = businesses.some(b => b.name === formData.company);
-      
-      if (businessExists) {
-        if (formData.role === 'admin') {
-          throw new Error('A business with this name already exists');
-        }
-        
-        // Join existing business
-        const business = businesses.find(b => b.name === formData.company);
-        if (!business.password) {
-          throw new Error('Business requires a password to join');
-        }
-        if (formData.businessPassword !== business.password) {
-          throw new Error('Invalid business password');
-        }
-        
-        business.members.push({
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: formData.role,
-          joined_at: new Date().toISOString()
-        });
-        
-        localStorage.setItem('businesses', JSON.stringify(
-          businesses.map(b => b.name === formData.company ? business : b)
-        ));
-      } else {
-        if (formData.role !== 'admin') {
-          throw new Error('Business does not exist. Only admins can create new businesses.');
-        }
-        
-        // Create new business
-        const newBusiness = {
-          id: `business_${Date.now()}`,
-          name: formData.company,
-          password: formData.businessPassword || '',
-          email: newUser.email,
-          tax_id: '',
-          address: '',
-          default_currency: 'AUD',
-          admin_id: newUser.id,
-          members: [{
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            role: 'admin',
-            joined_at: new Date().toISOString()
-          }]
-        };
-        
-        businesses.push(newBusiness);
-        localStorage.setItem('businesses', JSON.stringify(businesses));
+  const checkEmailExists = async (email) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/auth/check-email/${email}`);
+      if (!response.ok) {
+        throw new Error('Failed to check email');
       }
+      const data = await response.json();
+      return data.exists;
+    } catch (err) {
+      console.error('Email check error:', err);
+      return false;
     }
   };
 
@@ -126,41 +73,38 @@ function Signup() {
     e.preventDefault();
     
     try {
-      if (!validateForm()) return;
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-      // Improved email check
-      const emailExists = users.some(user => {
-        const existingEmail = user.email.toLowerCase().trim();
-        const newEmail = formData.email.toLowerCase().trim();
-        return existingEmail === newEmail;
-      });
-
-      if (emailExists) {
-        setError('Email already registered');
+      if (!validateForm()) {
         return;
       }
-
-      console.log('Email check passed - proceeding with registration');
+      
       setLoading(true);
-
-      const newUser = await register({
+      
+      // Check if email already exists
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        setError('Email already registered');
+        setLoading(false);
+        return;
+      }
+      
+      // Prepare signup data
+      const signupData = {
         name: formData.name,
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
-        role: formData.role
-      });
-
-      if (formData.company) {
-        await handleBusinessCreation(newUser);
-      }
-
+        role: formData.role,
+        avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+      };
+      
+      // Send signup request
+      await register(signupData);
+      
       // Auto login after registration
       await login(formData.email, formData.password, true);
       navigate('/dashboard');
     } catch (err) {
-      console.error('Registration error:', err);
       setError(err.message || 'Registration failed');
+      console.error('Signup error:', err);
     } finally {
       setLoading(false);
     }
@@ -189,6 +133,7 @@ function Signup() {
                 type="text"
                 id="name"
                 name="name"
+                placeholder="Enter your full name"
                 value={formData.name}
                 onChange={handleInput}
                 required
@@ -201,6 +146,7 @@ function Signup() {
                 type="email"
                 id="email"
                 name="email"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInput}
                 required
@@ -213,9 +159,11 @@ function Signup() {
                 type="password"
                 id="password"
                 name="password"
+                placeholder="Create a password (min 6 characters)"
                 value={formData.password}
                 onChange={handleInput}
                 required
+                minLength="6"
               />
             </div>
 
@@ -225,9 +173,11 @@ function Signup() {
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
+                placeholder="Repeat your password"
                 value={formData.confirmPassword}
                 onChange={handleInput}
                 required
+                minLength="6"
               />
             </div>
 
@@ -243,28 +193,6 @@ function Signup() {
                 <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="company">Company (Optional)</label>
-              <input
-                type="text"
-                id="company"
-                name="company"
-                value={formData.company}
-                onChange={handleInput}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="businessPassword">Business Password</label>
-              <input
-                type="password"
-                id="businessPassword"
-                name="businessPassword"
-                value={formData.businessPassword}
-                onChange={handleInput}
-              />
             </div>
 
             <div className="form-group checkbox-group">
