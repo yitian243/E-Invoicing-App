@@ -7,7 +7,7 @@ function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { register, login } = useAuth();
+  const { login, register } = useAuth();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -15,8 +15,6 @@ function Signup() {
     password: '',
     confirmPassword: '',
     role: 'staff',
-    company: '',
-    businessPassword: '',
     agreeToTerms: false
   });
 
@@ -50,10 +48,6 @@ function Signup() {
       setError('Passwords do not match');
       return false;
     }
-    if (formData.company && !formData.businessPassword) {
-      setError('Business password is required when joining a company');
-      return false;
-    }
     if (!formData.agreeToTerms) {
       setError('You must agree to the terms and conditions');
       return false;
@@ -61,110 +55,58 @@ function Signup() {
     return true;
   };
 
-  const handleBusinessCreation = async (newUser) => {
-    const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
-    
-    if (formData.company) {
-      const businessExists = businesses.some(b => b.name === formData.company);
-      
-      if (businessExists) {
-        if (formData.role === 'admin') {
-          throw new Error('A business with this name already exists');
-        }
-        
-        // Join existing business
-        const business = businesses.find(b => b.name === formData.company);
-        if (!business.password) {
-          throw new Error('Business requires a password to join');
-        }
-        if (formData.businessPassword !== business.password) {
-          throw new Error('Invalid business password');
-        }
-        
-        business.members.push({
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: formData.role,
-          joined_at: new Date().toISOString()
-        });
-        
-        localStorage.setItem('businesses', JSON.stringify(
-          businesses.map(b => b.name === formData.company ? business : b)
-        ));
-      } else {
-        if (formData.role !== 'admin') {
-          throw new Error('Business does not exist. Only admins can create new businesses.');
-        }
-        
-        // Create new business
-        const newBusiness = {
-          id: `business_${Date.now()}`,
-          name: formData.company,
-          password: formData.businessPassword || '',
-          email: newUser.email,
-          tax_id: '',
-          address: '',
-          default_currency: 'AUD',
-          admin_id: newUser.id,
-          members: [{
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            role: 'admin',
-            joined_at: new Date().toISOString()
-          }]
-        };
-        
-        businesses.push(newBusiness);
-        localStorage.setItem('businesses', JSON.stringify(businesses));
-      }
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const checkEmailExists = async (email) => {
     try {
-      if (!validateForm()) return;
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-
-      // Improved email check
-      const emailExists = users.some(user => {
-        const existingEmail = user.email.toLowerCase().trim();
-        const newEmail = formData.email.toLowerCase().trim();
-        return existingEmail === newEmail;
-      });
-
-      if (emailExists) {
-        setError('Email already registered');
-        return;
+      const response = await fetch(`http://localhost:4000/api/users/check-email/${email}`);
+      if (!response.ok) {
+        throw new Error('Failed to check email');
       }
-
-      console.log('Email check passed - proceeding with registration');
-      setLoading(true);
-
-      const newUser = await register({
-        name: formData.name,
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password,
-        role: formData.role
-      });
-
-      if (formData.company) {
-        await handleBusinessCreation(newUser);
-      }
-
-      // Auto login after registration
-      await login(formData.email, formData.password, true);
-      navigate('/dashboard');
+      const data = await response.json();
+      return data.exists;
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Registration failed');
-    } finally {
-      setLoading(false);
+      return false;
     }
   };
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      try {
+        if (!validateForm()) {
+          return;
+        }
+        
+        setLoading(true);
+    
+        // Check if email already exists
+        const emailExists = await checkEmailExists(formData.email);
+        if (emailExists) {
+          setError('Email already registered');
+          setLoading(false);
+          return;
+        }
+    
+        // Prepare signup data
+        const signupData = {
+          name: formData.name,
+          email: formData.email.toLowerCase().trim(),
+          password: formData.password,
+          role: formData.role,
+          avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+        };
+    
+        // Send signup request
+        await register(signupData);
+    
+        // Auto login after registration
+        await login(formData.email, formData.password, true);
+        navigate('/dashboard');
+      } catch (err) {
+        setError(err.message || 'Registration failed');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="signup-container">
@@ -243,28 +185,6 @@ function Signup() {
                 <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="company">Company (Optional)</label>
-              <input
-                type="text"
-                id="company"
-                name="company"
-                value={formData.company}
-                onChange={handleInput}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="businessPassword">Business Password</label>
-              <input
-                type="password"
-                id="businessPassword"
-                name="businessPassword"
-                value={formData.businessPassword}
-                onChange={handleInput}
-              />
             </div>
 
             <div className="form-group checkbox-group">
