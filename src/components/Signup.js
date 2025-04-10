@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import '../styles/Signup.css';
+import { BACKEND_URL } from './config';
 
 function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { updateAuthState } = useAuth();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,81 +28,70 @@ function Signup() {
     if (error) setError('');
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      setError('Full name is required');
-      return false;
-    }
-    if (!formData.email.trim()) {
-      setError('Email is required');
-      return false;
-    }
-    if (!formData.password) {
-      setError('Password is required');
-      return false;
-    }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    if (!formData.agreeToTerms) {
-      setError('You must agree to the terms and conditions');
-      return false;
-    }
-    return true;
-  };
-
-  const checkEmailExists = async (email) => {
+  const register = async (userData) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/auth/check-email/${email}`);
+      // Call the backend signup API
+      const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email.toLowerCase(),
+          password: userData.password,
+          role: userData.role,
+          avatar: userData.avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
+        })
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to check email');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Registration failed');
       }
-      const data = await response.json();
-      return data.exists;
-    } catch (err) {
-      console.error('Email check error:', err);
-      return false;
+
+      const responseData = await response.json();
+      
+      if (!responseData.success || !responseData.data) {
+        throw new Error('Invalid response from server');
+      }
+
+      return responseData.data;
+    } catch (error) {
+      throw error;
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     
     try {
-      if (!validateForm()) {
-        return;
-      }
-      
       setLoading(true);
-      
-      // Check if email already exists
-      const emailExists = await checkEmailExists(formData.email);
-      if (emailExists) {
-        setError('Email already registered');
-        setLoading(false);
-        return;
-      }
-      
-      // Prepare signup data
-      const signupData = {
+
+      const userData = {
         name: formData.name,
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
         role: formData.role,
         avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
       };
+    
+      // Register user
+      const response = await register(userData);
       
-      // Send signup request
-      await register(signupData);
+      // Response now contains token and user
+      const { token, user } = response;
       
-      // Auto login after registration
-      await login(formData.email, formData.password, true);
-      navigate('/dashboard');
+      // Update auth state with token
+      updateAuthState(user, token, 'persistent');
+      
+      // Navigate to dashboard
+      navigate('/dashboard');      
     } catch (err) {
       setError(err.message || 'Registration failed');
       console.error('Signup error:', err);

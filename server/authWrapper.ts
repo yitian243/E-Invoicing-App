@@ -63,28 +63,39 @@ export async function loginRequest(email: string, password: string) {
   }
 }
 
+
 /**
  * Logout a user
+ * @param token The authentication token
+ * @returns A promise that resolves to the response data or error status code
  */
 export async function logoutRequest(token: string) {
   try {
+    // Check if token exists
+    if (!token) {
+      return 401; // No token provided
+    }
+    
+    // Make the request
     const response = await fetch(`${SERVER_URL}${API_PREFIX}/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'token': token
+        'Authorization': `Bearer ${token}`
       }
     });
 
-    const data = await response.json();
-    
     if (!response.ok) {
       return response.status;
     }
     
-    return data;
+    try {
+      const data = await response.json();
+      return data;
+    } catch (e) {
+      return { success: true };
+    }
   } catch (error) {
-    console.error('Logout request failed:', error);
     return 500;
   }
 }
@@ -106,7 +117,36 @@ export async function clearDataStore() {
     
     return data;
   } catch (error) {
-    console.error('Clear data store request failed:', error);
     return 500;
   }
 }
+
+/**
+ * Validate a token with the API
+ * @param {string} token - The token to validate
+ * @returns {Promise<Object|number>} - Response object or HTTP status code on error
+ */
+export const validateTokenRequest = async (token: string) => {
+  try {
+    if (!token) {
+      return 401; // No token provided
+    }
+    
+    const response = await fetch(`${SERVER_URL}${API_PREFIX}/validate-token`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      return response.status;
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Token validation error:', error);
+    return 500;
+  }
+};
