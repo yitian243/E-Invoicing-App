@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import '../styles/Signup.css';
+import { BACKEND_URL } from './config';
 
 function Signup() {
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ function Signup() {
   const register = async (userData) => {
     try {
       // Call the backend signup API
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

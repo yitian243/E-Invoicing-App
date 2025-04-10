@@ -131,33 +131,4 @@ export function generateToken(): string {
   return uuidv4();
 }
 
-/**
- * Validates if a token is valid for a user
- * @param token The hashed token to validate
- * @returns User ID if valid, null if invalid
- */
-export function validateToken(token: string): number | null {
-  // Ensure we have data to work with
-  if (!dataStore || !dataStore.users || !Array.isArray(dataStore.users)) {
-    return null;
-  }
-  
-  // Look for a user with this token in their tokens array
-  for (const user of dataStore.users) {
-    if (!user.tokens || !Array.isArray(user.tokens)) {
-      continue;
-    }
-    
-    // Check each token in the user's tokens array
-    for (const userToken of user.tokens) {
-      const hashedToken = getHash(userToken);
-      if (hashedToken === token) {
-        return user.id;
-      }
-    }
-  }
-  
-  return null;
-}
-
 initializeDataStore();

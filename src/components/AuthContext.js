@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { BACKEND_URL } from './config.js';
 
 const AuthContext = createContext();
 
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
     // Call API to invalidate token on the server
     if (currentToken) {
       try {
-        const response = await fetch('http://localhost:5000/api/auth/logout', {
+        const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -54,7 +55,6 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     setAuthType('');
     
-    console.log('Client-side logout completed');
   }, [getStorage]);
 
   // Token validation
@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     if (!tokenToValidate) return false;
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/validate-token', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/validate-token`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${tokenToValidate}`

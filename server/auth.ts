@@ -288,15 +288,5 @@ router.get('/validate-token', (req: Request, res: Response): void => {
   });
 });
 
-/**
- * Extend the Express Request interface to include userId
- */
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: number;
-    }
-  }
-}
 
 export default router;

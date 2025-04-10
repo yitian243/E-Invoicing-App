@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { BACKEND_URL } from './config.js';
 import '../styles/Login.css';
 
 function Login() {
@@ -36,7 +37,7 @@ function Login() {
   // and updates the auth state in the context
   const login = async (email, password, rememberMe) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
