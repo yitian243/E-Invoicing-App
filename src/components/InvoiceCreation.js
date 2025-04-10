@@ -22,9 +22,9 @@ function InvoiceCreation() {
   useEffect(() => {
     // Simulating API fetch
     setClients([
-      { id: 1, name: 'Acme Corporation', email: 'billing@acme.com' },
-      { id: 2, name: 'Wayne Enterprises', email: 'accounts@wayne.com' },
-      { id: 3, name: 'Stark Industries', email: 'finance@stark.com' },
+      { id: 1, name: 'Acme Corporation', email: 'billing@acme.com', city: 'Sydney', street: 'Paint Street', postcode: '1234', taxNumber: '123456789' },
+      { id: 2, name: 'Wayne Enterprises', email: 'accounts@wayne.com', city: 'Gotham', street: 'Coffee Street', postcode: '2345', taxNumber: '234567890' },
+      { id: 3, name: 'Stark Industries', email: 'finance@stark.com', city: 'New York', street: 'Banana Street', postcode: '3456', taxNumber: '345678901' },
     ]);
   }, []);
 
@@ -129,20 +129,27 @@ function InvoiceCreation() {
       // Get client name for the invoice record
       const selectedClient = clients.find(client => client.id.toString() === invoice.clientId.toString());
       const clientName = selectedClient ? selectedClient.name : 'Unknown Client';
+      const clientCity = selectedClient ? selectedClient.city : '';
+      const clientStreet = selectedClient ? selectedClient.street : '';
+      const clientPostCode = selectedClient ? selectedClient.postcode : '';
+      const clientEmail = selectedClient ? selectedClient.email : '';
+      const clientTaxNumber = selectedClient ? selectedClient.taxNumber: '';
 
       // Calculate final amounts
       const subtotal = calculateSubtotal();
       const tax = calculateTotalTax();
       const total = calculateTotal();
 
-      // Create a unique ID for the new invoice
-      const newId = Date.now().toString();
       
+      // back end will generate newId
       // Create invoice record for history
       const invoiceRecord = {
-        id: newId,
-        invoiceNumber: invoice.invoiceNumber,
         client: clientName,
+        clientCity: clientCity,
+        clientStreet: clientStreet,
+        clientPostCode: clientPostCode,
+        clientEmail: clientEmail,
+        clientTaxNumber: clientTaxNumber,
         issueDate: invoice.issueDate,
         dueDate: invoice.dueDate,
         subtotal: subtotal,
@@ -158,27 +165,25 @@ function InvoiceCreation() {
         notes: invoice.notes,
         terms: invoice.terms
       };
-      
-      // Get existing invoices from localStorage
-      const existingInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-      
-      // Add new invoice to the array
-      const updatedInvoices = [invoiceRecord, ...existingInvoices];
-      
-      // Save updated invoices to localStorage
-      localStorage.setItem('invoices', JSON.stringify(updatedInvoices));
-      
-      // Here you would normally send the invoice data to your API
-      console.log('Submitting invoice:', invoiceRecord);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
+      // Send invoice to backend API
+      const response = await fetch('http://localhost:5000/api/invoice/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Make sure to send as JSON
+        },
+        body: JSON.stringify(invoiceRecord), // Send the invoice data in the request body
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create invoice');
+      }
       // Show success message
       alert('Invoice created successfully!');
-      
+  
       // Redirect to invoice history page
       navigate('/invoicehistory');
+          
     } catch (error) {
       console.error('Error creating invoice:', error);
       alert('Failed to create invoice. Please try again.');
@@ -210,8 +215,8 @@ function InvoiceCreation() {
                     name="invoiceNumber"
                     value={invoice.invoiceNumber}
                     onChange={handleChange}
-                    placeholder="INV-001"
-                    required
+                    placeholder="Invoice Number will be generated"
+                    readOnly
                   />
                 </div>
                 

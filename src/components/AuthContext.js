@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 // Create the authentication context
 const AuthContext = createContext();
 
-const API_URL = 'http://localhost:4000/api/auth';
+const API_URL = 'http://localhost:5000/api/auth';
 
 export function useAuth() {
   return useContext(AuthContext);

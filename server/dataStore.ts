@@ -23,12 +23,47 @@ export interface User {
 export interface Data {
   users: User[];
   usersTotal: number;
+  invoices: Invoice[];
+  invoicesTotal: number;
 }
+
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+}
+
+export interface Invoice {
+  id: number;
+  invoiceNumber: string;
+  client: string;
+  issueDate: string | Date;
+  dueDate: string | Date;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: string;
+  items: InvoiceItem[];
+  notes?: string;
+  terms?: string;
+  clientCity: string;
+  clientStreet: string;
+  clientPostCode: string;
+  clientEmail: string;
+  clientTaxNumber: string;
+  pdfUrl: string;
+  xmlUrl: string;
+}
+
+
 
 // Initial data state
 let dataStore: Data = {
   users: [],
-  usersTotal: 0
+  usersTotal: 0,
+  invoices: [],
+  invoicesTotal: 0
 };
 
 /**
@@ -63,6 +98,16 @@ export function setData(newData: Data): Record<string, never> {
 export function getUsers(): User[] {
   return dataStore.users;
 }
+
+/**
+ * Gets all invoices
+ * @returns Array of invoices
+ */
+export function getInvoices(): Invoice[] {
+  console.log('Invoices in data store:', dataStore.invoices);
+  return dataStore.invoices || [];
+}
+
 
 /**
  * Creates a hash from a string using the secret key
@@ -108,9 +153,11 @@ export function initializeDataStore(): void {
 export function resetDataStore(): Record<string, never> {
   dataStore = {
     users: [],
-    usersTotal: 0
+    usersTotal: 0,
+    invoices: [],
+    invoicesTotal: 0,
   };
-  
+
   // Remove database file if it exists
   try {
     if (fs.existsSync('./database.json')) {

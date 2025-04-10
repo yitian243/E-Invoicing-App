@@ -11,15 +11,16 @@ function InvoiceHistory() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // In a real app, you'd fetch this data from your API
-    // For demonstration purposes, we'll use localStorage to persist invoices
-    const fetchInvoices = () => {
+    const fetchInvoices = async () => {
       setLoading(true);
       try {
-        const savedInvoices = localStorage.getItem('invoices');
-        if (savedInvoices) {
-          setInvoices(JSON.parse(savedInvoices));
+        const response = await fetch('http://localhost:5000/api/invoice/get');
+        if (!response.ok) {
+          throw new Error('Failed to fetch invoices');
         }
+        // Parse the response as JSON and update the state
+        const { data } = await response.json();
+        setInvoices(data);
       } catch (error) {
         console.error('Error fetching invoices:', error);
       } finally {
@@ -113,13 +114,41 @@ function InvoiceHistory() {
     }).format(amount);
   };
 
-  const handleDeleteInvoice = (id) => {
+  const handleDeleteInvoice = async (id) => {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
-      const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
-      setInvoices(updatedInvoices);
-      localStorage.setItem('invoices', JSON.stringify(updatedInvoices));
+      try {
+        // Make DELETE request to backend
+        const response = await fetch(`http://localhost:5000/api/invoice/delete/${id}`, {
+          method: 'DELETE'
+        });
+  
+        if (response.status === 204) {
+          // Success - update local state
+          const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
+          setInvoices(updatedInvoices);
+        } else if (response.status === 404) {
+          // Handle not found case
+          const errorData = await response.json();
+          console.error('Delete failed:', errorData.error);
+          alert('Invoice not found');
+        } else {
+          // Handle other errors
+          console.error('Delete failed with status:', response.status);
+          alert('Failed to delete invoice');
+        }
+      } catch (error) {
+        console.error('Error deleting invoice:', error);
+        alert('Network error while deleting invoice');
+      }
     }
   };
+  // const handleDeleteInvoice = (id) => {
+  //   if (window.confirm('Are you sure you want to delete this invoice?')) {
+  //     const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
+  //     setInvoices(updatedInvoices);
+  //     localStorage.setItem('invoices', JSON.stringify(updatedInvoices));
+  //   }
+  // };
 
   return (
     <div className="dashboard-container">
@@ -224,19 +253,27 @@ function InvoiceHistory() {
                         </span>
                       </td>
                       <td className="actions-cell">
-                        <button className="action-btn view-btn" title="View Invoice">
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        <button className="action-btn edit-btn" title="Edit Invoice">
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button 
-                          className="action-btn delete-btn" 
-                          title="Delete Invoice"
-                          onClick={() => handleDeleteInvoice(invoice.id)}
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                        <div className="dropdown">
+                          <button className="action-btn dropdown-toggle">
+                            <i className="fas fa-ellipsis-v"></i>
+                          </button>
+                          <div className="dropdown-menu">
+                            <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                              <i className="fas fa-file-pdf"></i> View PDF
+                            </a>
+                            {invoice.xmlUrl && (
+                              <a href={invoice.xmlUrl} target="_blank" rel="noopener noreferrer">
+                                <i className="fas fa-file-code"></i> View XML
+                              </a>
+                            )}
+                            <button
+                              className="dropdown-item"
+                              onClick={() => handleDeleteInvoice(invoice.id)}
+                            >
+                              <i className="fas fa-trash"></i> Delete
+                            </button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}
