@@ -1,4 +1,4 @@
-import { Request, Response, Router, NextFunction } from 'express';
+import { Request, Response, Router } from 'express';
 import validator from 'validator';
 import { 
   getData, 
@@ -6,7 +6,6 @@ import {
   getUsers, 
   getHash, 
   generateToken,
-  validateToken,
   User 
 } from './dataStore.js';
 
@@ -42,27 +41,55 @@ const checkEmptyFields = (fields: string[], req: Request, res: Response): boolea
   }
   return false;
 };
-
 /**
- * Middleware to authenticate token
+ * Route for user logout
+ * @route POST /api/auth/logout
  */
-export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
-  const token = req.headers.token as string;
+router.post('/logout', (req: Request, res: Response): void => {
+  const authHeader = req.headers.authorization;
   
-  if (!token) {
+  if (!authHeader) {
     res.status(401).json(createErrorResponse('Authentication required', 401));
     return;
   }
   
-  const userId = validateToken(token);
-  if (userId === null) {
+  const providedToken = authHeader.replace('Bearer ', '');
+  
+  if (!providedToken) {
+    res.status(401).json(createErrorResponse('Authentication required', 401));
+    return;
+  }
+  
+  const data = getData();
+  
+  let tokenFound = false;
+  
+  for (let i = 0; i < data.users.length; i++) {
+    const user = data.users[i];
+    if (!user.tokens) continue;
+    
+    const tokenIndex = user.tokens.findIndex(token => 
+      getHash(token) === providedToken
+    );
+    
+    if (tokenIndex !== -1) {
+      user.tokens.splice(tokenIndex, 1);
+      tokenFound = true;
+      break;
+    }
+  }
+  
+  if (!tokenFound) {
     res.status(403).json(createErrorResponse('Invalid token', 403));
     return;
   }
   
-  req.userId = userId;
-  next();
-};
+  setData(data);
+  
+  res.status(200).json({
+    success: true
+  });
+});
 
 /**
  * Route for user login
@@ -161,6 +188,9 @@ router.post('/signup', (req: Request, res: Response): void => {
   const newId = data.usersTotal + 1;
   data.usersTotal += 1;
   
+  // Generate token for the new user
+  const newToken = generateToken();
+  
   // Create new user object
   const newUser: User = {
     id: newId,
@@ -170,7 +200,7 @@ router.post('/signup', (req: Request, res: Response): void => {
     role,
     business_id: business_id || 1,
     avatar: avatar || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
-    tokens: [],
+    tokens: [newToken], // Add the token to the user's tokens array
     lastLogin: new Date(),
     createdAt: new Date()
   };
@@ -190,42 +220,14 @@ router.post('/signup', (req: Request, res: Response): void => {
     createdAt: newUser.createdAt
   };
   
-  // Send response
+  // Send response with token
   res.status(201).json({
     success: true,
-    data: userResponse
-  });
-});
-
-/**
- * Route for user logout
- * @route POST /api/auth/logout
- */
-router.post('/logout', authenticateToken, (req: Request, res: Response): void => {
-  const token = req.headers.token as string;
-  const userId = req.userId;
-  
-  const data = getData();
-  const userIndex = data.users.findIndex(u => u.id === userId);
-  
-  if (userIndex === -1) {
-    res.status(403).json(createErrorResponse('Invalid user', 403));
-    return;
-  }
-  
-  // Find and remove the token
-  const user = data.users[userIndex];
-  for (let i = 0; i < user.tokens.length; i++) {
-    if (getHash(user.tokens[i]) === token) {
-      user.tokens.splice(i, 1);
-      setData(data);
-      res.json({ success: true });
-      return;
+    data: {
+      token: getHash(newToken),
+      user: userResponse
     }
-  }
-  
-  // If we get here, token wasn't found (shouldn't happen due to middleware)
-  res.status(403).json(createErrorResponse('Invalid token', 403));
+  });
 });
 
 /**
@@ -241,6 +243,48 @@ router.get('/check-email/:email', (req: Request, res: Response): void => {
   
   res.json({
     exists: emailExists
+  });
+});
+
+/**
+ * Route to validate an existing token
+ * @route GET /api/auth/validate-token
+ */
+router.get('/validate-token', (req: Request, res: Response): void => {
+  // Get the token from the Authorization header
+  const tokenHeader = req.headers.authorization;
+  
+  if (!tokenHeader) {
+    res.status(401).json(createErrorResponse('No token provided', 401));
+    return;
+  }
+
+  // Extract the token (remove 'Bearer ' if present)
+  const providedToken = tokenHeader.replace('Bearer ', '');
+  
+  const data = getData();
+  
+  // Find a user with a matching token
+  const user = data.users.find(user => 
+    user.tokens.some(storedToken => getHash(storedToken) === providedToken)
+  );
+
+  if (!user) {
+    res.status(403).json(createErrorResponse('Invalid erh', 403));
+    return;
+  }
+  
+  // Token is valid, return user information
+  res.json({
+    success: true,
+    data: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      avatar: user.avatar,
+      lastLogin: user.lastLogin
+    }
   });
 });
 

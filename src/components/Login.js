@@ -7,7 +7,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { updateAuthState, isAuthenticated } = useAuth();
 
   const [credentials, setCredentials] = useState({
     email: '',
@@ -32,10 +32,45 @@ function Login() {
     if (error) setError('');
   };
 
+  // login calls the backend API to authenticate the user
+  // and updates the auth state in the context
+  const login = async (email, password, rememberMe) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      const responseData = await response.json();
+      
+      if (!responseData.success || !responseData.data) {
+        throw new Error('Invalid response from server');
+      }
+
+      const { token: newToken, user } = responseData.data;
+      
+      const authKey = rememberMe ? 'persistent' : 'temporary';
+      return updateAuthState(user, newToken, authKey);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Basic client-side validation
+    // basic client-side validation
     if (!credentials.email || !credentials.password) {
       setError('Please enter both email and password');
       return;
@@ -45,12 +80,9 @@ function Login() {
     setError('');
     
     try {
-      console.log('Attempting login with:', credentials.email);
-      const user = await login(credentials.email, credentials.password, rememberMe);
-      console.log('Login successful:', user);
+      await login(credentials.email, credentials.password, rememberMe);
       navigate('/dashboard');
     } catch (err) {
-      console.error('Full login error:', err);
       setError(err.message || 'Login failed');
     } finally {
       setLoading(false);

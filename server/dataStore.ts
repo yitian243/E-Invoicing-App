@@ -137,13 +137,26 @@ export function generateToken(): string {
  * @returns User ID if valid, null if invalid
  */
 export function validateToken(token: string): number | null {
+  // Ensure we have data to work with
+  if (!dataStore || !dataStore.users || !Array.isArray(dataStore.users)) {
+    return null;
+  }
+  
+  // Look for a user with this token in their tokens array
   for (const user of dataStore.users) {
+    if (!user.tokens || !Array.isArray(user.tokens)) {
+      continue;
+    }
+    
+    // Check each token in the user's tokens array
     for (const userToken of user.tokens) {
-      if (getHash(userToken) === token) {
+      const hashedToken = getHash(userToken);
+      if (hashedToken === token) {
         return user.id;
       }
     }
   }
+  
   return null;
 }
 
