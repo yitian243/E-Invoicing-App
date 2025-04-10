@@ -3,6 +3,8 @@ import { BACKEND_URL } from './config.js';
 
 const AuthContext = createContext();
 
+const API_URL = 'http://localhost:5000/api/auth';
+
 export function useAuth() {
   return useContext(AuthContext);
 }

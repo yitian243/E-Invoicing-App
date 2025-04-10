@@ -20,7 +20,10 @@ function Contacts() {
     email: '',
     phone: '',
     type: 'client',
-    address: '',
+    city: '',
+    street: '',
+    postcode: '',
+    taxNumber: '',
     notes: '',
     lastInteraction: ''
   });
@@ -170,7 +173,10 @@ function Contacts() {
       email: '',
       phone: '',
       type: 'client',
-      address: '',
+      city: '',
+      street: '',
+      postcode: '',
+      taxNumber: '',
       notes: '',
       lastInteraction: new Date().toISOString().split('T')[0],
       invoiceCount: 0,
@@ -417,15 +423,34 @@ function Contacts() {
                         {selectedContact.phone || 'No phone provided'}
                       </div>
                     </div>
+
                     <div className="info-row">
                       <div className="info-label">
                         <i className="fas fa-map-marker-alt"></i> Address
                       </div>
                       <div className="info-value">
-                        {selectedContact.address || 'No address provided'}
+                        {selectedContact.street || selectedContact.city || selectedContact.postcode ? (
+                          <>
+                            {selectedContact.street && <div>{selectedContact.street}</div>}
+                            {selectedContact.city && <div>{selectedContact.city}</div>}
+                            {selectedContact.postcode && <div>{selectedContact.postcode}</div>}
+                          </>
+                        ) : (
+                          'No address provided'
+                        )}
                       </div>
                     </div>
                   </div>
+
+                  <div className="info-row">
+                    <div className="info-label">
+                      <i className="fas fa-id-card"></i> Tax Number
+                    </div>
+                    <div className="info-value">
+                      {selectedContact.taxNumber || 'No tax number provided'}
+                    </div>
+                  </div>
+                  
                   
                   <div className="info-section">
                     <h3>Business Information</h3>
@@ -575,15 +600,50 @@ function Contacts() {
                 </div>
               </div>
               
-              <div className="form-group full-width">
-                <label htmlFor="address">Address</label>
-                <textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="city">City</label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                  />
+                </div>
+          
+                <div className="form-group">
+                  <label htmlFor="street">Street Name</label>
+                  <input
+                    type="text"
+                    id="street"
+                    name="street"
+                    value={formData.street}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="postcode">Postcode</label>
+                  <input
+                    type="text"
+                    id="postcode"
+                    name="postcode"
+                    value={formData.postcode}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="taxNumber">Tax Number</label>
+                <input
+                  type="text"
+                  id="taxNumber"
+                  name="taxNumber"
+                  value={formData.taxNumber}
                   onChange={handleInputChange}
-                  rows="2"
-                ></textarea>
+                />
               </div>
               
               <div className="form-group full-width">

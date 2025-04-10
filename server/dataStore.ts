@@ -46,13 +46,48 @@ export interface Business {
 export interface Data {
   users: User[];
   usersTotal: number;
+  invoices: Invoice[];
+  invoicesTotal: number;
   businesses: Business[];
 }
+
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+}
+
+export interface Invoice {
+  id: number;
+  invoiceNumber: string;
+  client: string;
+  issueDate: string | Date;
+  dueDate: string | Date;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: string;
+  items: InvoiceItem[];
+  notes?: string;
+  terms?: string;
+  clientCity: string;
+  clientStreet: string;
+  clientPostCode: string;
+  clientEmail: string;
+  clientTaxNumber: string;
+  pdfUrl: string;
+  xmlUrl: string;
+}
+
+
 
 // Initial data state
 let dataStore: Data = {
   users: [],
   usersTotal: 0,
+  invoices: [],
+  invoicesTotal: 0,
   businesses: []
 };
 
@@ -91,6 +126,16 @@ export function getUsers(): User[] {
 }
 
 /**
+ * Gets all invoices
+ * @returns Array of invoices
+ */
+export function getInvoices(): Invoice[] {
+  console.log('Invoices in data store:', dataStore.invoices);
+  return dataStore.invoices || [];
+}
+
+
+/** 
  * Gets all businesses
  * @returns Array of businesses
  */
@@ -148,9 +193,11 @@ export function resetDataStore(): Record<string, never> {
   dataStore = {
     users: [],
     usersTotal: 0,
+    invoices: [],
+    invoicesTotal: 0,
     businesses: []
   };
-  
+
   // Remove database file if it exists
   try {
     if (fs.existsSync('./database.json')) {
