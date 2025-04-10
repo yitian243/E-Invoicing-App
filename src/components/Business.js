@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import '../styles/Business.css';
+import { BACKEND_URL } from './config';
+import { useAuth } from './AuthContext';
 
 function Business() {
   const [isEditing, setIsEditing] = useState(false);
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [error, setError] = useState('');
-  const [user] = useState(JSON.parse(localStorage.getItem('user')));
+  const [loading, setLoading] = useState(true);
+  const { currentUser, token } = useAuth();
   
   const [businessData, setBusinessData] = useState({
     id: '',
@@ -27,27 +30,48 @@ function Business() {
   });
 
   useEffect(() => {
-    const loadBusinessData = () => {
+    const loadBusinessData = async () => {
       try {
-        const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
+        setLoading(true);
+        
+        // Get current user's business
+        const response = await fetch(`${BACKEND_URL}/api/business/user/${currentUser.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-        // Find business where user is a member
-        const userBusiness = businesses.find(b =>
-          b.members.some(m => m.email.toLowerCase() === user?.email.toLowerCase())
-        );
-
-        if (userBusiness) {
-          setBusinessData(userBusiness);
+        if (!response.ok) {
+          if (response.status !== 404) {
+            // Only show error if it's not a "not found" error
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to load business data');
+          }
+          setLoading(false);
+          return;
         }
+
+        const businesses = await response.json();
+        
+        if (businesses && businesses.length > 0) {
+          setBusinessData(businesses[0]);
+        }
+        setLoading(false);
       } catch (err) {
-        setError('Failed to load business data');
+        console.error('Error loading business:', err);
+        setError('Failed to load business data: ' + (err.message || 'Unknown error'));
+        setLoading(false);
       }
     };
 
-    if (user?.email) {
+    if (currentUser?.id && token) {
       loadBusinessData();
+    } else {
+      setLoading(false);
     }
-  }, [user]);
+  }, [currentUser, token]);
 
   // dynamically updates the business data
   const handleInputChange = (e) => {
@@ -76,67 +100,63 @@ function Business() {
         return;
       }
 
-      // Get existing businesses
-      const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
-
+      setLoading(true);
+      
+      let response;
+      
       if (businessData.id) {
         // Update existing business
-        const updatedBusinesses = businesses.map(business => 
-          business.id === businessData.id ? {
-            ...business,
+        response = await fetch(`${BACKEND_URL}/api/business/${businessData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
             name: businessData.name,
             tax_id: businessData.tax_id,
             email: businessData.email,
             address: businessData.address,
             default_currency: businessData.default_currency,
             password: businessData.password,
-            updated_at: new Date().toISOString()
-          } : business
-        );
-
-        localStorage.setItem('businesses', JSON.stringify(updatedBusinesses));
-        setIsEditing(false);
+            user_id: currentUser.id
+          })
+        });
       } else {
         // Create new business
-        const newBusinessId = `business_${Date.now()}`;
-        
-        const newBusiness = {
-          ...businessData,
-          id: newBusinessId,
-          admin_id: user.id,
-          created_at: new Date().toISOString(),
-          members: [{
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: 'admin',
-            joined_at: new Date().toISOString()
-          }]
-        };
-
-        // Add new business to array
-        businesses.push(newBusiness);
-        localStorage.setItem('businesses', JSON.stringify(businesses));
-
-        // Update users array
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const updatedUsers = users.map(u => {
-          if (u.email.toLowerCase() === user.email.toLowerCase()) {
-            return {
-              ...u,
-              company: newBusiness.name,
-              businessRole: 'admin'
-            };
-          }
-          return u;
+        response = await fetch(`${BACKEND_URL}/api/business`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: businessData.name,
+            tax_id: businessData.tax_id,
+            email: businessData.email,
+            address: businessData.address,
+            default_currency: businessData.default_currency,
+            password: businessData.password,
+            admin_id: currentUser.id,
+            admin_name: currentUser.name,
+            admin_email: currentUser.email
+          })
         });
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-        setBusinessData(newBusiness);
-        setIsEditing(false);
       }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save business');
+      }
+
+      const result = await response.json();
+      setBusinessData(result);
+      setIsEditing(false);
     } catch (err) {
-      setError('Failed to save business. Please try again.');
+      console.error('Error saving business:', err);
+      setError('Failed to save business: ' + (err.message || 'Please try again.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,59 +165,36 @@ function Business() {
     setError('');
     
     try {
-      const businesses = JSON.parse(localStorage.getItem('businesses') || '[]');
-      const businessToJoin = businesses.find(b => 
-        b.name.toLowerCase() === joinData.businessName.toLowerCase()
-      );
+      setLoading(true);
       
-      if (!businessToJoin) {
-        setError('Business not found');
-        return;
-      }
-
-      if (businessToJoin.password !== joinData.password) {
-        setError('Invalid password');
-        return;
-      }
-
-      // Add user as staff member
-      const updatedBusiness = {
-        ...businessToJoin,
-        members: [
-          ...businessToJoin.members,
-          {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: 'staff',
-            joined_at: new Date().toISOString()
-          }
-        ]
-      };
-
-      // Update businesses array
-      const updatedBusinesses = businesses.map(b => 
-        b.id === businessToJoin.id ? updatedBusiness : b
-      );
-      localStorage.setItem('businesses', JSON.stringify(updatedBusinesses));
-
-      // Update users array
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const updatedUsers = users.map(u => {
-        if (u.email.toLowerCase() === user.email.toLowerCase()) {
-          return {
-            ...u,
-            company: businessToJoin.name
-          };
-        }
-        return u;
+      const response = await fetch(`${BACKEND_URL}/api/business/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          businessName: joinData.businessName,
+          password: joinData.password,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userEmail: currentUser.email
+        })
       });
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
 
-      setBusinessData(updatedBusiness);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to join business');
+      }
+
+      const result = await response.json();
+      setBusinessData(result);
       setShowJoinForm(false);
     } catch (err) {
-      setError('Failed to join business. Please try again.');
+      console.error('Error joining business:', err);
+      setError('Failed to join business: ' + (err.message || 'Please try again.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -225,6 +222,29 @@ function Business() {
     );
   };
 
+  // Determine if user is admin
+  const isAdmin = () => {
+    if (!currentUser || !businessData.id) return false;
+    
+    // Check if user is business admin
+    const userMember = businessData.members?.find(
+      member => member.id === currentUser.id
+    );
+    
+    return userMember?.role === 'admin' || currentUser.role === 'admin';
+  };
+
+  if (loading) {
+    return (
+      <div className="business-container">
+        <Sidebar />
+        <main className="main-content">
+          <div className="loading-spinner">Loading...</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="business-container">
       <Sidebar />
@@ -232,7 +252,7 @@ function Business() {
       <main className="main-content">
         <div className="business-header">
           <h1>Business Profile</h1>
-          {businessData.id && (user?.businessRole === 'admin' || user?.role === 'admin') && !isEditing && (
+          {businessData.id && isAdmin() && !isEditing && (
             <button 
               className="btn-edit" 
               onClick={() => setIsEditing(true)}
@@ -251,7 +271,7 @@ function Business() {
           <div className="no-business">
             <i className="fas fa-building"></i>
             <h2>No Business Profile</h2>
-            {user?.role === 'admin' ? ( // Changed from 'Admin' to 'admin'
+            {currentUser?.role === 'admin' ? (
               <>
                 <p>Create or join a business to get started</p>
                 <div className="business-actions">
@@ -316,7 +336,7 @@ function Business() {
                     value={businessData.name}
                     onChange={handleInputChange}
                     required
-                    disabled={!isEditing}
+                    disabled={loading}
                   />
                 </div>
 
@@ -329,7 +349,7 @@ function Business() {
                     value={businessData.tax_id}
                     onChange={handleInputChange}
                     required
-                    disabled={!isEditing}
+                    disabled={loading}
                   />
                 </div>
 
@@ -342,7 +362,7 @@ function Business() {
                     value={businessData.email}
                     onChange={handleInputChange}
                     required
-                    disabled={!isEditing}
+                    disabled={loading}
                   />
                 </div>
 
@@ -353,7 +373,7 @@ function Business() {
                     name="default_currency"
                     value={businessData.default_currency}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={loading}
                   >
                     <option value="AUD">AUD</option>
                     <option value="USD">USD</option>
@@ -370,7 +390,7 @@ function Business() {
                     value={businessData.address}
                     onChange={handleInputChange}
                     rows="3"
-                    disabled={!isEditing}
+                    disabled={loading}
                   ></textarea>
                 </div>
 
@@ -383,17 +403,26 @@ function Business() {
                     value={businessData.password}
                     onChange={handleInputChange}
                     required
-                    disabled={!isEditing}
+                    disabled={loading}
                   />
                 </div>
               </div>
 
               <div className="business-actions">
-                <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => setIsEditing(false)}
+                  disabled={loading}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -416,6 +445,7 @@ function Business() {
                     onChange={handleJoinInputChange}
                     placeholder="Enter the business name"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -429,6 +459,7 @@ function Business() {
                     onChange={handleJoinInputChange}
                     placeholder="Enter the business password"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -438,11 +469,16 @@ function Business() {
                   type="button" 
                   className="btn-secondary" 
                   onClick={() => setShowJoinForm(false)}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Join Business
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? 'Joining...' : 'Join Business'}
                 </button>
               </div>
             </form>
