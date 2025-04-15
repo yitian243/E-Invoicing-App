@@ -1,13 +1,13 @@
 import { Request, Response, Router } from 'express';
 import validator from 'validator';
-import { 
-  getData, 
-  setData, 
-  getUsers, 
-  getHash, 
+import {
   generateToken,
-  User 
-} from './dataStore.js';
+  getData,
+  getHash,
+  getUsers,
+  setData,
+  User
+} from './dataStore';
 
 // Initialize router
 const router = Router();

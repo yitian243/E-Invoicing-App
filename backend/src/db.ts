@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-dotenv.config({ path: path.resolve('../.env') });
+dotenv.config({ path: path.resolve('../../.env') });
 
 // Constants
 const SECRET_KEY = 'your-invoice-app-secret-key';

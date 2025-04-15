@@ -6,6 +6,10 @@
 /.pnp
 .pnp.js
 
+# dockerfile
+# frontend/Dockerfile
+# backend/Dockerfile
+# docker-compose.yml
 
 # testing
 /coverage

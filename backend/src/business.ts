@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getData, setData, Business, BusinessMember } from './dataStore';
+import { Business, BusinessMember, getData, setData } from './dataStore';
 
 const router = express.Router();
 

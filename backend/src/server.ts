@@ -1,33 +1,33 @@
 import cors from 'cors';
 import express, { Request, Response } from 'express';
-import { BACKEND_PORT } from './config.js';
-import authRoutes from './auth.js';
-import invoiceRoutes from './invoice.js'
-import  businessRoutes from './business.js';
-import { resetDataStore, initializeDataStore } from './dataStore.js';
-
+import authRoutes from './auth';
+import businessRoutes from './business';
+import { BACKEND_PORT } from './config';
+import { initializeDataStore, resetDataStore } from './dataStore';
+import invoiceRoutes from './invoice';
 
 // Initialise app
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
-
 app.use('/api/invoice', invoiceRoutes);
 
+// Testing Endpoint
 app.delete('/api/testing/clear-users', (req: Request, res: Response) => {
   resetDataStore();
   res.json({ success: true });
 });
 
+// Initialising temporary data store
 initializeDataStore();
 
+// Start Server
 app.listen(BACKEND_PORT, () => {
-  console.log(`Server running on port ${BACKEND_PORT}`);
+  console.log(`Server running on ${BACKEND_PORT}`);
 });
 
 export default app;
-
-

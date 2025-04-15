@@ -2,31 +2,37 @@
   "name": "server",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.js",
-  "type": "module",
-  "scripts": {
-    "build": "tsc",
-    "start": "node server.js",
-    "dev": "tsx server.ts",
-    "test": "node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js",
-    "test:debug": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --detectOpenHandles"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "scripts": {
+    "test": "jest --testMatch \"**/?(*.)+(test).ts\"",
+    "tsc": "tsc --noImplicitAny",
+    "lint": "eslint src/**/*.{ts,js}",
+    "lint-fix": "eslint --fix src/**/*.{ts,js}",
+    "start": "ts-node -T src/server.ts",
+    "ts-node-coverage": "nyc --reporter=text --reporter=lcov ts-node -T src/server.ts",
+    "posttest": "pkill -f 'node_modules/sync-rpc/lib/worker.js' > /dev/null 2>&1",
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
-    "axios": "^1.6.8",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "express": "^4.19.2",
-    "uuid": "^9.0.1",
-    "validator": "^13.11.0"
+    "express": "^4.18.0",
+    "http-errors": "^2.0.0",
+    "middleware-http-errors": "^0.1.1",
+    "uuid": "^9.0.0",
+    "validator": "^13.7.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.27.0",
+    "@babel/preset-env": "^7.26.9",
     "@jest/globals": "^29.7.0",
     "@supabase/supabase-js": "^2.49.4",
     "@types/axios": "^0.14.0",
     "@types/cors": "^2.8.17",
+    "@types/dotenv": "^8.2.3",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.17.30",
@@ -54,7 +60,7 @@
         "ts-jest",
         {
           "useESM": true,
-          "tsconfig": "tsconfig.json"
+          "tsconfig": "src/tsconfig.json"
         }
       ]
     },
