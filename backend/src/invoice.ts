@@ -30,7 +30,8 @@ const createErrorResponse = (message: string, statusCode: number) => {
 router.post('/create', async (req: Request, res: Response) => {
   try {
     const { 
-        client, 
+        contactId,
+        clientName,
         clientCity, 
         clientStreet, 
         clientPostCode, 
@@ -48,7 +49,7 @@ router.post('/create', async (req: Request, res: Response) => {
     } = req.body;
 
     // Validate required fields
-    if (!client || !clientCity || !clientStreet || !clientPostCode || 
+    if (!contactId || !clientName || !clientCity || !clientStreet || !clientPostCode || 
         !clientEmail || !clientTaxNumber || !issueDate || !dueDate ||
         typeof subtotal !== 'number' ||
         typeof tax !== 'number' ||
@@ -78,7 +79,8 @@ router.post('/create', async (req: Request, res: Response) => {
     const newInvoice: Invoice = {
         id: newId,
         invoiceNumber,
-        client,
+        contactId,
+        clientName,
         issueDate,
         dueDate,
         subtotal,
@@ -99,6 +101,9 @@ router.post('/create', async (req: Request, res: Response) => {
 
     data.invoices.push(newInvoice);
     data.invoicesTotal += 1;
+    const contactIndex = data.contacts.findIndex(contact => contact.id === contactId);
+    data.contacts[contactIndex].invoiceCount += 1
+    data.contacts[contactIndex].totalValue += total
     setData(data);
 
     // 2. Prepare DDD Invoice request
@@ -138,7 +143,7 @@ router.post('/create', async (req: Request, res: Response) => {
     skeleton.BuyerPostCode = clientPostCode;
     skeleton.SellerVatNum = "AU12345678901";
     skeleton.DocNumber = invoiceNumber;
-    skeleton.BuyerName = client;
+    skeleton.BuyerName = clientName;
     skeleton.DocIssueDate = issueDate + 'T00:00:00';
     skeleton.DocDueDate = dueDate;
     skeleton.DocTotalVatAmount = tax;
@@ -242,13 +247,15 @@ router.delete('/delete/:id', (req: Request, res: Response): void => {
   
     // Find the index of the invoice with the given ID
     const invoiceIndex = data.invoices.findIndex(invoice => invoice.id === invoiceId);
-  
+    const contactId = data.invoices[invoiceIndex].contactId;
+    const contactIndex = data.contacts.findIndex(contact => contact.id === contactId);
     // If invoice not found, return error response
     if (invoiceIndex === -1) {
       res.status(404).json(createErrorResponse('Invoice not found', 404));
       return;
     }
-  
+    data.contacts[contactIndex].invoiceCount -= 1
+    data.contacts[contactIndex].totalValue -= data.invoices[invoiceIndex].total
     // Remove the invoice from the invoices array
     data.invoices.splice(invoiceIndex, 1);
   

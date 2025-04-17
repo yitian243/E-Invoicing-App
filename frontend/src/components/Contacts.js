@@ -14,7 +14,6 @@ function Contacts() {
   const [showModal, setShowModal] = useState(false);
   const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
   const [formData, setFormData] = useState({
-    id: '',
     name: '',
     company: '',
     email: '',
@@ -27,77 +26,38 @@ function Contacts() {
     notes: '',
     lastInteraction: ''
   });
+  const [errors, setErrors] = useState({
+    taxNumber: ''
+  });
 
-  // Load contacts and extract clients from invoices
+
+  const validateTaxNumber = (taxNumber) => {
+    // Check if it's exactly 9 digits
+    const isValid = /^\d{9}$/.test(taxNumber);
+    return {
+      isValid,
+      message: isValid ? '' : 'Tax number must be exactly 9 digits'
+    };
+  };
+
   useEffect(() => {
-    // Load contacts from localStorage
-    const savedContacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    
-    // Extract clients from invoices that aren't already in contacts
-    const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    const clientsFromInvoices = [];
-    
-    invoices.forEach(invoice => {
-      // Check if this client is already in savedContacts
-      const existingContact = savedContacts.find(contact => 
-        contact.name.toLowerCase() === invoice.client.toLowerCase() ||
-        (contact.company && contact.company.toLowerCase() === invoice.client.toLowerCase())
-      );
-      
-      if (!existingContact && invoice.client) {
-        // See if this client is already in our temporary array
-        const existingTempContact = clientsFromInvoices.find(contact => 
-          contact.name.toLowerCase() === invoice.client.toLowerCase() ||
-          contact.company.toLowerCase() === invoice.client.toLowerCase()
-        );
-        
-        if (!existingTempContact) {
-          // Create a contact from invoice data
-          clientsFromInvoices.push({
-            id: Date.now() + Math.random().toString(36).substring(2),
-            name: invoice.client,
-            company: invoice.client,
-            email: '',
-            phone: '',
-            type: 'client',
-            address: '',
-            notes: 'Automatically added from invoice',
-            lastInteraction: invoice.issueDate,
-            invoiceCount: 1,
-            totalValue: invoice.total
-          });
-        } else {
-          // Update existing temp contact
-          existingTempContact.invoiceCount = (existingTempContact.invoiceCount || 0) + 1;
-          existingTempContact.totalValue = (existingTempContact.totalValue || 0) + invoice.total;
-          
-          // Update last interaction if this invoice is more recent
-          if (invoice.issueDate > existingTempContact.lastInteraction) {
-            existingTempContact.lastInteraction = invoice.issueDate;
-          }
+    const fetchContacts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/contact/getContacts');
+        if (!response.ok) {
+          throw new Error('Failed to fetch contacts');
         }
-      } else if (existingContact) {
-        // Update existing contact with invoice data
-        existingContact.invoiceCount = (existingContact.invoiceCount || 0) + 1;
-        existingContact.totalValue = (existingContact.totalValue || 0) + invoice.total;
-        
-        // Update last interaction if this invoice is more recent
-        if (invoice.issueDate > (existingContact.lastInteraction || '')) {
-          existingContact.lastInteraction = invoice.issueDate;
-        }
+  
+        const { data } = await response.json();
+        setContacts(data);
+        setFilteredContacts(data);
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+      } finally {
       }
-    });
-    
-    // Combine saved contacts with new clients from invoices
-    const allContacts = [...savedContacts, ...clientsFromInvoices];
-    
-    // Save back to localStorage if we added new contacts
-    if (clientsFromInvoices.length > 0) {
-      localStorage.setItem('contacts', JSON.stringify(allContacts));
-    }
-    
-    setContacts(allContacts);
-    setFilteredContacts(allContacts);
+    };
+  
+    fetchContacts();
   }, []);
 
   // Handle search and filter changes
@@ -167,7 +127,6 @@ function Contacts() {
   const openAddContactModal = () => {
     setFormMode('add');
     setFormData({
-      id: '',
       name: '',
       company: '',
       email: '',
@@ -208,54 +167,95 @@ function Contacts() {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    // Special validation for tax number
+    if (name === 'taxNumber') {
+      const validation = validateTaxNumber(value);
+      setErrors({
+        ...errors,
+        taxNumber: validation.message
+      });
+    }
     setFormData({
       ...formData,
       [name]: value
     });
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (formMode === 'add') {
-      // Add new contact
-      const newContact = {
-        ...formData,
-        id: Date.now().toString()
-      };
-      
-      const updatedContacts = [...contacts, newContact];
-      setContacts(updatedContacts);
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-    } else {
-      // Update existing contact
-      const updatedContacts = contacts.map(contact => 
-        contact.id === formData.id ? formData : contact
-      );
-      
-      setContacts(updatedContacts);
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-      
-      // Update selected contact if it's being viewed
-      if (selectedContact && selectedContact.id === formData.id) {
-        setSelectedContact(formData);
-      }
+    // Validate tax number before submission
+    const taxValidation = validateTaxNumber(formData.taxNumber);
+    if (!taxValidation.isValid) {
+      setErrors({
+        ...errors,
+        taxNumber: taxValidation.message
+      });
+      return; // Prevent form submission
     }
-    
-    closeModal();
-  };
 
-  // Delete a contact
-  const handleDeleteContact = (id) => {
-    if (window.confirm('Are you sure you want to delete this contact?')) {
-      const updatedContacts = contacts.filter(contact => contact.id !== id);
-      setContacts(updatedContacts);
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-      
-      // Close contact details if the deleted contact was selected
-      if (selectedContact && selectedContact.id === id) {
+    const url = formMode === 'add' 
+      ? 'http://localhost:5000/api/contact/create' // POST route for adding contact
+      : `http://localhost:5000/api/contact/update/${formData.id}`; // PUT route for updating contact
+  
+    try {
+      // Sending the data to the backend
+      const response = await fetch(url, {
+        method: formMode === 'add' ? 'POST' : 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData), // Send the formData as the request body
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to save contact');
+      }
+  
+      // If adding, get the new contact from the backend
+      const { data } = await response.json();
+  
+      if (formMode === 'add') {
+        // Add new contact to state if it's an 'add' request
+        setContacts([...contacts, data]);
+      } else {
+        // Update existing contact in state
+        setContacts(contacts.map(contact => contact.id === data.id ? data : contact));
         setSelectedContact(null);
+      }
+  
+      // Close modal after submit
+      closeModal();
+    } catch (error) {
+      console.error('Error handling submit:', error);
+      alert('An error occurred while saving the contact.');
+    }
+  };
+  
+
+  const handleDeleteContact = async (id) => {
+    if (window.confirm('Are you sure you want to delete this contact?')) {
+      try {
+        // Send DELETE request to the backend to delete the contact
+        const response = await fetch(`http://localhost:5000/api/contact/delete/${id}`, {
+          method: 'DELETE',
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to delete the contact');
+        }
+  
+        // Remove the contact from local state
+        const updatedContacts = contacts.filter(contact => contact.id !== id);
+        setContacts(updatedContacts);
+  
+        // Close contact details if the deleted contact was selected
+        if (selectedContact && selectedContact.id === id) {
+          setSelectedContact(null);
+        }
+      } catch (error) {
+        console.error('Error deleting contact:', error);
+        alert('Failed to delete the contact');
       }
     }
   };
@@ -558,6 +558,7 @@ function Contacts() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    required
                   />
                 </div>
                 
@@ -609,6 +610,7 @@ function Contacts() {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
+                    required
                   />
                 </div>
           
@@ -620,6 +622,7 @@ function Contacts() {
                     name="street"
                     value={formData.street}
                     onChange={handleInputChange}
+                    required
                   />
                 </div>
 
@@ -631,6 +634,7 @@ function Contacts() {
                     name="postcode"
                     value={formData.postcode}
                     onChange={handleInputChange}
+                    required
                   />
                 </div>
               </div>
@@ -643,7 +647,15 @@ function Contacts() {
                   name="taxNumber"
                   value={formData.taxNumber}
                   onChange={handleInputChange}
+                  required
+                  maxlength="9"
+                  pattern="\d{9}" // HTML5 pattern validation
+                  title="Tax number must be exactly 9 digits"
+
                 />
+                {errors.taxNumber && (
+                  <div className="error-message">{errors.taxNumber}</div>
+                )}
               </div>
               
               <div className="form-group full-width">

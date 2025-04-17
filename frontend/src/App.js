@@ -14,6 +14,7 @@ import Profile from './components/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import Business from './components/Business';
 import Signup from './components/Signup';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 function App() {
   return (
