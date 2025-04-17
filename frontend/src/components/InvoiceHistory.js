@@ -12,7 +12,6 @@ function InvoiceHistory() {
 
   useEffect(() => {
     const fetchInvoices = async () => {
-      setLoading(true);
       try {
         const response = await fetch('http://localhost:5000/api/invoice/get');
         if (!response.ok) {

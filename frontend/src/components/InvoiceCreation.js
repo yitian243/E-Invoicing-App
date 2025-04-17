@@ -18,14 +18,25 @@ function InvoiceCreation() {
     terms: 'Payment is due within 30 days',
   });
 
-  // For demonstration purposes - in a real app, fetch from API
+  // Replace your current useEffect with this API call
   useEffect(() => {
-    // Simulating API fetch
-    setClients([
-      { id: 1, name: 'Acme Corporation', email: 'billing@acme.com', city: 'Sydney', street: 'Paint Street', postcode: '1234', taxNumber: '123456789' },
-      { id: 2, name: 'Wayne Enterprises', email: 'accounts@wayne.com', city: 'Gotham', street: 'Coffee Street', postcode: '2345', taxNumber: '234567890' },
-      { id: 3, name: 'Stark Industries', email: 'finance@stark.com', city: 'New York', street: 'Banana Street', postcode: '3456', taxNumber: '345678901' },
-    ]);
+    const fetchClients = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/contact/getContacts');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch clients');
+        }
+
+        const { data } = await response.json();
+        setClients(data);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+        // Optionally set error state or show notification
+      }
+    };
+
+    fetchClients();
   }, []);
 
   // Format date as YYYY-MM-DD for input fields
@@ -128,6 +139,7 @@ function InvoiceCreation() {
     try {
       // Get client name for the invoice record
       const selectedClient = clients.find(client => client.id.toString() === invoice.clientId.toString());
+      const clientId = selectedClient.id
       const clientName = selectedClient ? selectedClient.name : 'Unknown Client';
       const clientCity = selectedClient ? selectedClient.city : '';
       const clientStreet = selectedClient ? selectedClient.street : '';
@@ -144,7 +156,8 @@ function InvoiceCreation() {
       // back end will generate newId
       // Create invoice record for history
       const invoiceRecord = {
-        client: clientName,
+        contactId: clientId,
+        clientName: clientName,
         clientCity: clientCity,
         clientStreet: clientStreet,
         clientPostCode: clientPostCode,
@@ -415,11 +428,25 @@ function InvoiceCreation() {
                 className="btn-primary"
                 disabled={loading}
               >
-                {loading ? 'Creating...' : 'Create Invoice'}
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> Creating Invoice...
+                  </>
+                ) : (
+                  'Create Invoice'
+                )}
               </button>
             </div>
           </form>
         </div>
+        {loading && (
+          <div className="loading-overlay">
+            <div className="loading-content">
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p>Creating your invoice...</p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
