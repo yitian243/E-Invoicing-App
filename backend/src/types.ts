@@ -3,7 +3,9 @@
  * Based on the provided ER diagram
  */
 
-// 
+  /**
+   * Business entity
+   */
 export interface Business {
     business_id: number;  // Primary Key
     business_name: string;

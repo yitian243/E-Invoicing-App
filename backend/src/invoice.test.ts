@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
-import { createInvoiceRequest, deleteInvoiceRequest, getInvoicesRequest } from './invoiceWrapper.js';
-import { resetDataStore } from './dataStore.js'; // This should point to clearDataStore function
+import { beforeEach, describe, expect, test } from '@jest/globals';
+import { resetDataStore } from './dataStore'; // This should point to clearDataStore function
+import { createInvoiceRequest, deleteInvoiceRequest, getInvoicesRequest } from './invoiceWrapper';
 
 beforeEach(async () => {
 

@@ -1,4 +1,4 @@
-import { BACKEND_PORT } from './config.js';
+import { BACKEND_PORT } from './config';
 
 const SERVER_URL = `http://localhost:${BACKEND_PORT}`;
 const API_PREFIX = '/api/auth';

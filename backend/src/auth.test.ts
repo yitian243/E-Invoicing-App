@@ -1,12 +1,12 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { resetDataStore } from './dataStore.js';
-import { 
-  registerRequest,
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals';
+import {
+  clearDataStore,
   loginRequest,
   logoutRequest,
-  clearDataStore,
+  registerRequest,
   validateTokenRequest
 } from './authWrapper';
+import { resetDataStore } from './dataStore';
 
 describe('Authentication API Tests', () => {
   beforeAll(() => {

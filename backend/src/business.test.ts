@@ -1,18 +1,18 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { resetDataStore } from './dataStore.js';
-import { 
-  registerRequest,
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals';
+import {
+  clearDataStore,
   loginRequest,
-  clearDataStore
+  registerRequest
 } from './authWrapper';
 import {
   createBusinessRequest,
   getBusinessByIdRequest,
-  getUserBusinessesRequest,
-  updateBusinessRequest,
-  joinBusinessRequest,
   getBusinessMembersRequest,
+  getUserBusinessesRequest,
+  joinBusinessRequest,
+  updateBusinessRequest,
 } from './businessWrapper';
+import { resetDataStore } from './dataStore';
 
 describe('Business API Tests', () => {
   let adminToken: string;
