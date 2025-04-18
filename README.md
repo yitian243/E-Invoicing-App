@@ -61,10 +61,9 @@ This table details the available API endpoints for the application.
 
 **Notes:**
 
-* **Authorization:** Endpoints requiring authentication expect a standard `Authorization: Bearer <token>` header. Invoice endpoints are marked as *likely* requiring auth; verify implementation.
+* **Authorization:** Endpoints requiring authentication expect a standard `Authorization: Bearer <token>` header. Invoice endpoints are marked as *likely* requiring auth; verify implementation with Ollie.
 * `?` indicates optional fields in the request body.
 * `:paramName` indicates a URL path parameter.
-* This table is based on the provided code snippets. Review specific route handlers for exact implementation details.
 
 ## File Heirarchy Visualisation:
 ```
