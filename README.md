@@ -1,6 +1,38 @@
 # Business Process for SMEs Utilizing E-invoicing API
 [![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=18452976&assignment_repo_type=AssignmentRepo)
 <br>
+
+Running the Web Application
+
+Development Commands
+
+Starting Frontend Server
+
+Execute the following command in ./frontend/ directory
+
+
+
+npm start
+ 
+
+Starting Backend Server
+
+Execute the following command in ./backend/ directory
+
+
+
+npm start
+ 
+
+Docker
+
+Creating Docker App in root directory
+
+
+
+docker-compose up --build
+NOTE: The current dockerfile for frontend uses nginx for production but can be changed to use npm with react-scripts start if refresh issues continue. 
+
 File Heirarchy Visualisation:
 ```
 CAPSTONE-PROJECT-2025-T1-ZST1-3300-F138-BANANA
