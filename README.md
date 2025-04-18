@@ -34,70 +34,65 @@ docker-compose up --build
 
 File Heirarchy Visualisation:
 ```
-CAPSTONE-PROJECT-2025-T1-ZST1-3300-F138-BANANA
-├── node_modules
-├── public
-├── server
+CAPSTONE-PROJECT-2025-T1-ZST1-3900-F13B-BANANA
+├── backend
 │   ├── node_modules
-│   ├── auth.test.ts
-│   ├── auth.ts
-│   ├── authWrapper.ts
-│   ├── business.test.ts
-│   ├── business.ts
-│   ├── businessWrapper.ts
-│   ├── config.ts
+│   ├── src
+│   │   ├── auth.test.ts
+│   │   ├── auth.ts
+│   │   ├── authWrapper.ts
+│   │   ├── business.test.ts
+│   │   ├── business.ts
+│   │   ├── businessWrapper.ts
+│   │   ├── config.ts
+│   │   ├── dataStore.ts
+│   │   ├── db.ts
+│   │   ├── invoice.test.ts
+│   │   ├── invoice.ts
+│   │   ├── invoiceWrapper.ts
+│   │   ├── jest.config.js
+│   │   ├── server.ts
+│   │   └── types.ts
 │   ├── database.json
-│   ├── dataStore.ts
-│   ├── db.ts
-│   ├── invoice.test.ts
-│   ├── invoice.ts
-│   ├── invoiceWrapper.ts
+│   ├── Dockerfile
 │   ├── package-lock.json
 │   ├── package.json
-│   ├── server.ts
-│   ├── tsconfig.json
-│   └── types.ts
-├── src
-│   ├── components
-│   │   ├── AuthContext.js
-│   │   ├── Business.js
-│   │   ├── config.js
-│   │   ├── Contact.js
-│   │   ├── Dashboard.js
-│   │   ├── InvoiceCreation.js
-│   │   ├── InvoiceHistory.js
-│   │   ├── InvoiceSending.js
-│   │   ├── InvoiceUpload.js
-│   │   ├── InvoiceValidation.js
-│   │   ├── Login.js
-│   │   ├── Profile.js
-│   │   ├── ProtectedRoute.js
-│   │   ├── Sidebar.js
-│   │   └── Signup.js
-│   ├── styles
-│   │   ├── App.css
-│   │   ├── Business.css
-│   │   ├── Contacts.css
-│   │   ├── Dashboard.css
-│   │   ├── index.css
-│   │   ├── InvoiceCreation.css
-│   │   ├── InvoiceHistory.css
-│   │   ├── InvoiceSending.css
-│   │   ├── InvoiceUpload.css
-│   │   ├── InvoiceValidation.css
-│   │   ├── Login.css
-│   │   ├── Profile.css
-│   │   └── Signup.css
-│   ├── App.js
-│   ├── App.test.js
-│   ├── index.js
-│   ├── logo.svg
-│   ├── reportWebVitals.js
-│   └── setupTests.js
-├── .env
-├── .env.example
-├── .gitignore
+│   └── tsconfig.json
+├── frontend
+│   ├── node_modules
+│   ├── public
+│   ├── src
+│   │   ├── components
+│   │   │   ├── AuthContext.js
+│   │   │   ├── Business.js
+│   │   │   ├── config.js
+│   │   │   ├── Contacts.js
+│   │   │   ├── Dashboard.js
+│   │   │   ├── InvoiceCreation.js
+│   │   │   ├── InvoiceHistory.js
+│   │   │   ├── InvoiceSending.js
+│   │   │   ├── InvoiceUpload.js
+│   │   │   ├── InvoiceValidation.js
+│   │   │   ├── Login.js
+│   │   │   ├── Profile.js
+│   │   │   ├── ProtectedRoute.js
+│   │   │   ├── Sidebar.js
+│   │   │   └── Signup.js
+│   │   ├── styles
+│   │   ├── App.js
+│   │   ├── App.test.js
+│   │   ├── index.js
+│   │   ├── logo.svg
+│   │   ├── reportWebVitals.js
+│   │   └── setupTests.js
+│   ├── Dockerfile
+│   ├── package-lock.json
+│   └── package.json
+├── Dockerfile
 ├── package-lock.json
 ├── package.json
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
 └── README.md
 ```
