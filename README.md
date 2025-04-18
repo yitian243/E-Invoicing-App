@@ -32,7 +32,7 @@ docker-compose up --build
 
 > **Note:** The current Dockerfile for the frontend uses **nginx** for production, but it can be changed to use `npm` with `react-scripts start` if refresh issues continue.
 
-File Heirarchy Visualisation:
+## File Heirarchy Visualisation:
 ```
 CAPSTONE-PROJECT-2025-T1-ZST1-3900-F13B-BANANA
 ├── backend
