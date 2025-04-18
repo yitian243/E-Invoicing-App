@@ -78,7 +78,7 @@ CAPSTONE-PROJECT-2025-T1-ZST1-3900-F13B-BANANA
 │   │   │   ├── ProtectedRoute.js
 │   │   │   ├── Sidebar.js
 │   │   │   └── Signup.js
-│   │   ├── styles
+│   │   ├── styles/
 │   │   ├── App.js
 │   │   ├── App.test.js
 │   │   ├── index.js
