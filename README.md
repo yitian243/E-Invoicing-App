@@ -2,36 +2,35 @@
 [![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=18452976&assignment_repo_type=AssignmentRepo)
 <br>
 
-Running the Web Application
+# Running the Web Application
 
-Development Commands
+## Development Commands
 
-Starting Frontend Server
+### Starting Frontend Server
 
-Execute the following command in ./frontend/ directory
+Execute the following command in the `./frontend/` directory:
 
-
-
+```bash
 npm start
- 
+```
 
-Starting Backend Server
+### Starting Backend Server
 
-Execute the following command in ./backend/ directory
+Execute the following command in the `./backend/` directory:
 
-
-
+```bash
 npm start
- 
+```
 
-Docker
+## Docker
 
-Creating Docker App in root directory
+### Creating Docker App in Root Directory
 
-
-
+```bash
 docker-compose up --build
-NOTE: The current dockerfile for frontend uses nginx for production but can be changed to use npm with react-scripts start if refresh issues continue. 
+```
+
+> **Note:** The current Dockerfile for the frontend uses **nginx** for production, but it can be changed to use `npm` with `react-scripts start` if refresh issues continue.
 
 File Heirarchy Visualisation:
 ```
