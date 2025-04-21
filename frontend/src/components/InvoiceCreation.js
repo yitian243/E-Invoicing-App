@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createInvoiceRequest, getContactsForInvoiceRequest } from '../invoiceWrapper';
+import { useAuth } from './AuthContext';
 import Sidebar from './Sidebar';
 
 function InvoiceCreation() {
   const navigate = useNavigate();
+  const { token, currentUser } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   // Form state
   const [invoice, setInvoice] = useState({
@@ -18,26 +22,42 @@ function InvoiceCreation() {
     terms: 'Payment is due within 30 days',
   });
 
-  // Replace your current useEffect with this API call
+  // Fetch clients from the user's business
   useEffect(() => {
     const fetchClients = async () => {
+      if (!token || !currentUser) {
+        setError('You must be logged in to create invoices');
+        return;
+      }
+      
       try {
-        const response = await fetch('http://localhost:5000/api/contact/getContacts');
+        setLoading(true);
+        console.log('Fetching clients with token:', token);
+        const response = await getContactsForInvoiceRequest(token);
+        console.log('Response from getContactsForInvoiceRequest:', response);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch clients');
+        if (typeof response === 'number') {
+          throw new Error(`Failed to fetch clients: ${response}`);
         }
 
-        const { data } = await response.json();
-        setClients(data);
+        if (!response.data) {
+          throw new Error('No data returned from server');
+        }
+
+        // Filter to only show contacts of type 'client'
+        const clientContacts = response.data.filter(contact => contact.type === 'client');
+        console.log('Filtered client contacts:', clientContacts);
+        setClients(clientContacts);
       } catch (error) {
         console.error('Error fetching clients:', error);
-        // Optionally set error state or show notification
+        setError('Failed to load clients. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchClients();
-  }, []);
+  }, [token, currentUser]);
 
   // Format date as YYYY-MM-DD for input fields
   function formatDate(date) {
@@ -135,27 +155,50 @@ function InvoiceCreation() {
     e.preventDefault();
     
     setLoading(true);
+    setError('');
     
     try {
+      console.log('Form submitted with clientId:', invoice.clientId);
+      console.log('Available clients:', clients);
+      
+      if (!invoice.clientId) {
+        setError('Please select a client');
+        setLoading(false);
+        return;
+      }
+      
       // Get client name for the invoice record
       const selectedClient = clients.find(client => client.id.toString() === invoice.clientId.toString());
-      const clientId = selectedClient.id
-      const clientName = selectedClient ? selectedClient.name : 'Unknown Client';
-      const clientCity = selectedClient ? selectedClient.city : '';
-      const clientStreet = selectedClient ? selectedClient.street : '';
-      const clientPostCode = selectedClient ? selectedClient.postcode : '';
-      const clientEmail = selectedClient ? selectedClient.email : '';
-      const clientTaxNumber = selectedClient ? selectedClient.taxNumber: '';
+      
+      if (!selectedClient) {
+        console.error('Selected client not found:', invoice.clientId);
+        setError('Selected client not found');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Selected client:', selectedClient);
+      
+      const clientId = selectedClient.id;
+      const clientName = selectedClient.name || 'Unknown Client';
+      const clientCity = selectedClient.city || '';
+      const clientStreet = selectedClient.street || '';
+      const clientPostCode = selectedClient.postcode || '';
+      const clientEmail = selectedClient.email || '';
+      const clientTaxNumber = selectedClient.tax_number || ''; // Note: using tax_number from the database
 
       // Calculate final amounts
       const subtotal = calculateSubtotal();
       const tax = calculateTotalTax();
       const total = calculateTotal();
 
+      console.log('Calculated amounts:', { subtotal, tax, total });
       
       // back end will generate newId
       // Create invoice record for history
       const invoiceRecord = {
+        contactId: clientId,
+        clientName: clientName,
         contactId: clientId,
         clientName: clientName,
         clientCity: clientCity,
@@ -179,18 +222,17 @@ function InvoiceCreation() {
         terms: invoice.terms
       };
 
-      // Send invoice to backend API
-      const response = await fetch('http://localhost:5000/api/invoice/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Make sure to send as JSON
-        },
-        body: JSON.stringify(invoiceRecord), // Send the invoice data in the request body
-      });
+      console.log('Sending invoice record:', invoiceRecord);
 
-      if (!response.ok) {
-        throw new Error('Failed to create invoice');
+      // Send invoice to backend API using the wrapper function
+      const response = await createInvoiceRequest(token, invoiceRecord);
+      
+      console.log('Create invoice response:', response);
+      
+      if (typeof response === 'number') {
+        throw new Error(`Failed to create invoice: ${response}`);
       }
+      
       // Show success message
       alert('Invoice created successfully!');
   
@@ -199,6 +241,7 @@ function InvoiceCreation() {
           
     } catch (error) {
       console.error('Error creating invoice:', error);
+      setError(`Failed to create invoice: ${error.message}`);
       alert('Failed to create invoice. Please try again.');
     } finally {
       setLoading(false);
@@ -214,8 +257,17 @@ function InvoiceCreation() {
           <h1>Create New Invoice</h1>
         </div>
         
+        {error && <div className="error-message">{error}</div>}
+        
         <div className="invoice-creation-container">
-          <form onSubmit={handleSubmit} className="invoice-form">
+          {!token || !currentUser ? (
+            <div className="auth-required-message">
+              <i className="fas fa-lock"></i>
+              <h2>Authentication Required</h2>
+              <p>You must be logged in to create invoices.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="invoice-form">
             <div className="form-section">
               <h2>Invoice Details</h2>
               
@@ -435,10 +487,26 @@ function InvoiceCreation() {
                 ) : (
                   'Create Invoice'
                 )}
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> Creating Invoice...
+                  </>
+                ) : (
+                  'Create Invoice'
+                )}
               </button>
             </div>
           </form>
+          )}
         </div>
+        {loading && (
+          <div className="loading-overlay">
+            <div className="loading-content">
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p>Creating your invoice...</p>
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="loading-overlay">
             <div className="loading-content">

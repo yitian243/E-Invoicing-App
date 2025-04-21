@@ -1,21 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getInvoicesRequest } from '../invoiceWrapper';
 import '../styles/InvoiceValidation.css';
+import { useAuth } from './AuthContext';
+import { BACKEND_URL } from './config';
 import Sidebar from './Sidebar';
 
 function InvoiceValidation() {
+  const { token, currentUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
+  const [error, setError] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [validationResults, setValidationResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
 
-  // Load invoices from localStorage
+  // Load invoices from backend API
   useEffect(() => {
-    const savedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    setInvoices(savedInvoices);
-  }, []);
+    const fetchInvoices = async () => {
+      if (!token || !currentUser) {
+        setError('You must be logged in to validate invoices');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const response = await getInvoicesRequest(token);
+        
+        if (typeof response === 'number') {
+          throw new Error(`Failed to fetch invoices: ${response}`);
+        }
+        
+        setInvoices(response.data || []);
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        setError('Failed to load invoices. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoices();
+  }, [token, currentUser]);
 
   // Select an invoice
   const handleInvoiceSelect = (e) => {
@@ -36,81 +63,119 @@ function InvoiceValidation() {
   };
 
   // Validate the invoice
-  const validateInvoice = () => {
+  const validateInvoice = async () => {
     if (!selectedInvoice) return;
     
     setValidating(true);
     
-    // Simulate API validation delay
-    setTimeout(() => {
-      // Perform validation checks
-      const results = {
-        valid: true,
-        checks: [
-          {
-            name: 'Invoice Number',
-            passed: !!selectedInvoice.invoiceNumber,
-            message: selectedInvoice.invoiceNumber ? 'Valid invoice number' : 'Missing invoice number'
-          },
-          {
-            name: 'Client Information',
-            passed: !!selectedInvoice.client,
-            message: selectedInvoice.client ? 'Client information present' : 'Missing client information'
-          },
-          {
-            name: 'Invoice Date',
-            passed: !!selectedInvoice.issueDate,
-            message: selectedInvoice.issueDate ? 'Valid issue date' : 'Missing issue date'
-          },
-          {
-            name: 'Due Date',
-            passed: !!selectedInvoice.dueDate,
-            message: selectedInvoice.dueDate ? 'Valid due date' : 'Missing due date'
-          },
-          {
-            name: 'Invoice Items',
-            passed: selectedInvoice.items && selectedInvoice.items.length > 0,
-            message: selectedInvoice.items && selectedInvoice.items.length > 0 ? 
-              'Invoice contains items' : 'Invoice has no items'
-          },
-          {
-            name: 'Tax Calculation',
-            passed: true,
-            message: 'Tax calculations are correct'
-          },
-          {
-            name: 'Total Amount',
-            passed: selectedInvoice.total > 0,
-            message: selectedInvoice.total > 0 ? 
-              'Valid total amount' : 'Total amount must be greater than zero'
-          },
-          {
-            name: 'Required Fields',
-            passed: validateRequiredFields(selectedInvoice),
-            message: validateRequiredFields(selectedInvoice) ? 
-              'All required fields are filled' : 'Some required fields are missing'
-          }
-        ]
-      };
+    try {
+      // Call backend API to validate invoice
+      const response = await fetch(`${BACKEND_URL}/api/invoice/${selectedInvoice.id}/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      // Set overall validation status
-      results.valid = results.checks.every(check => check.passed);
+      if (!response.ok) {
+        throw new Error(`Failed to validate invoice: ${response.status}`);
+      }
       
-      setValidationResults(results);
-      setValidating(false);
+      const data = await response.json();
       
-      // Update validation status in localStorage if needed
-      if (results.valid) {
+      setValidationResults(data.results);
+      
+      // If validation was successful, update the invoice list
+      if (data.results.valid) {
         const updatedInvoices = invoices.map(inv => {
           if (inv.id === selectedInvoice.id) {
-            return { ...inv, validated: true, validationDate: new Date().toISOString() };
+            return { 
+              ...inv, 
+              validated: true, 
+              validationDate: new Date().toISOString(),
+              status: 'validated'
+            };
           }
           return inv;
         });
         setInvoices(updatedInvoices);
-        localStorage.setItem('invoices', JSON.stringify(updatedInvoices));
+        
+        // Also update the selected invoice
+        setSelectedInvoice(prev => ({
+          ...prev,
+          validated: true,
+          validationDate: new Date().toISOString(),
+          status: 'validated'
+        }));
       }
-    }, 1500);
+    } catch (error) {
+      console.error('Error validating invoice:', error);
+      setError('Failed to validate invoice. Please try again.');
+      
+      // Fallback to client-side validation if API call fails
+      performClientSideValidation();
+    } finally {
+      setValidating(false);
+    }
+  };
+  
+  // Fallback client-side validation
+  const performClientSideValidation = () => {
+    // Perform validation checks
+    const results = {
+      valid: true,
+      checks: [
+        {
+          name: 'Invoice Number',
+          passed: !!selectedInvoice.invoiceNumber,
+          message: selectedInvoice.invoiceNumber ? 'Valid invoice number' : 'Missing invoice number'
+        },
+        {
+          name: 'Client Information',
+          passed: !!selectedInvoice.client,
+          message: selectedInvoice.client ? 'Client information present' : 'Missing client information'
+        },
+        {
+          name: 'Invoice Date',
+          passed: !!selectedInvoice.issueDate,
+          message: selectedInvoice.issueDate ? 'Valid issue date' : 'Missing issue date'
+        },
+        {
+          name: 'Due Date',
+          passed: !!selectedInvoice.dueDate,
+          message: selectedInvoice.dueDate ? 'Valid due date' : 'Missing due date'
+        },
+        {
+          name: 'Invoice Items',
+          passed: selectedInvoice.items && selectedInvoice.items.length > 0,
+          message: selectedInvoice.items && selectedInvoice.items.length > 0 ? 
+            'Invoice contains items' : 'Invoice has no items'
+        },
+        {
+          name: 'Tax Calculation',
+          passed: true,
+          message: 'Tax calculations are correct'
+        },
+        {
+          name: 'Total Amount',
+          passed: selectedInvoice.total > 0,
+          message: selectedInvoice.total > 0 ? 
+            'Valid total amount' : 'Total amount must be greater than zero'
+        },
+        {
+          name: 'Required Fields',
+          passed: validateRequiredFields(selectedInvoice),
+          message: validateRequiredFields(selectedInvoice) ? 
+            'All required fields are filled' : 'Some required fields are missing'
+        }
+      ]
+    };
+    
+    // Set overall validation status
+    results.valid = results.checks.every(check => check.passed);
+    
+    setValidationResults(results);
   };
 
   // Helper function to validate all required fields
@@ -152,8 +217,18 @@ function InvoiceValidation() {
           </Link>
         </div>
         
+        {error && <div className="error-message">{error}</div>}
+        
         <div className="validation-container">
-          <div className="validation-step">
+          {!token || !currentUser ? (
+            <div className="auth-required-message">
+              <i className="fas fa-lock"></i>
+              <h2>Authentication Required</h2>
+              <p>You must be logged in to validate invoices.</p>
+            </div>
+          ) : (
+            <>
+            <div className="validation-step">
             <h2>1. Select an Invoice to Validate</h2>
             <div className="form-group">
               <select 
@@ -261,7 +336,7 @@ function InvoiceValidation() {
                       <div className="next-steps">
                         <p>Your invoice is validated and ready to be sent.</p>
                         <div className="action-buttons">
-                          <Link to="/invoice-sending" className="btn-primary">
+                          <Link to={`/invoice-sending?invoiceId=${selectedInvoice.id}`} className="btn-primary">
                             <i className="fas fa-paper-plane"></i> Proceed to Sending
                           </Link>
                           <Link to="/invoicehistory" className="btn-secondary">
@@ -308,6 +383,8 @@ function InvoiceValidation() {
                 <button className="btn-primary">Create Your First Invoice</button>
               </Link>
             </div>
+          )}
+          </>
           )}
         </div>
       </main>

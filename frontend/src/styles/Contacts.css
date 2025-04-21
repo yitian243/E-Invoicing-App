@@ -516,3 +516,13 @@
   input:invalid {
     border-color: #dc3545;
   }
+
+  .error-message {
+    color: #dc3545;
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  
+  input:invalid {
+    border-color: #dc3545;
+  }

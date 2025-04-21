@@ -1,34 +1,70 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { deleteInvoiceRequest, getInvoicesRequest } from '../invoiceWrapper';
+import { useAuth } from './AuthContext';
+import { BACKEND_URL } from './config';
 import Sidebar from './Sidebar';
 
 function InvoiceHistory() {
+  const { token, currentUser } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // State for tracking which dropdown is open
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+
+  // Toggle dropdown
+  const toggleDropdown = (id) => {
+    setOpenDropdownId(openDropdownId === id ? null : id);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenDropdownId(null);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchInvoices = async () => {
+      if (!token || !currentUser) {
+        setError('You must be logged in to view invoices');
+        setLoading(false);
+        return;
+      }
+      
       try {
-        const response = await fetch('http://localhost:5000/api/invoice/get');
-        if (!response.ok) {
-          throw new Error('Failed to fetch invoices');
+        console.log('Fetching invoices with token:', token);
+        const response = await getInvoicesRequest(token);
+        console.log('Invoices response:', response);
+        
+        if (typeof response === 'number') {
+          throw new Error(`Failed to fetch invoices: ${response}`);
         }
-        // Parse the response as JSON and update the state
-        const { data } = await response.json();
-        setInvoices(data);
+        
+        // Update the state with the fetched invoices
+        setInvoices(response.data || []);
+        console.log('Invoices loaded:', response.data);
       } catch (error) {
         console.error('Error fetching invoices:', error);
+        setError('Failed to load invoices. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchInvoices();
-  }, []);
+  }, [token, currentUser]);
 
   // Filter invoices based on status
   const getFilteredInvoices = () => {
@@ -96,6 +132,10 @@ function InvoiceHistory() {
         return 'status-badge status-pending';
       case 'overdue':
         return 'status-badge status-overdue';
+      case 'validated':
+        return 'status-badge status-validated';
+      case 'sent':
+        return 'status-badge status-sent';
       default:
         return 'status-badge';
     }
@@ -114,25 +154,27 @@ function InvoiceHistory() {
   };
 
   const handleDeleteInvoice = async (id) => {
+    if (!token || !currentUser) {
+      setError('You must be logged in to delete invoices');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this invoice?')) {
       try {
-        // Make DELETE request to backend
-        const response = await fetch(`http://localhost:5000/api/invoice/delete/${id}`, {
-          method: 'DELETE'
-        });
+        // Make DELETE request to backend using the wrapper function
+        const response = await deleteInvoiceRequest(token, id);
   
-        if (response.status === 204) {
+        if (response === 204) {
           // Success - update local state
           const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
           setInvoices(updatedInvoices);
-        } else if (response.status === 404) {
+        } else if (response === 404) {
           // Handle not found case
-          const errorData = await response.json();
-          console.error('Delete failed:', errorData.error);
+          console.error('Delete failed: Invoice not found');
           alert('Invoice not found');
         } else {
           // Handle other errors
-          console.error('Delete failed with status:', response.status);
+          console.error('Delete failed with status:', response);
           alert('Failed to delete invoice');
         }
       } catch (error) {
@@ -161,6 +203,8 @@ function InvoiceHistory() {
           </Link>
         </div>
         
+        {error && <div className="error-message">{error}</div>}
+        
         <div className="invoice-history-container">
           <div className="filters-bar">
             <div className="search-box">
@@ -187,6 +231,18 @@ function InvoiceHistory() {
                 Pending
               </button>
               <button
+                className={`filter-btn ${filter === 'validated' ? 'active' : ''}`}
+                onClick={() => setFilter('validated')}
+              >
+                Validated
+              </button>
+              <button
+                className={`filter-btn ${filter === 'sent' ? 'active' : ''}`}
+                onClick={() => setFilter('sent')}
+              >
+                Sent
+              </button>
+              <button
                 className={`filter-btn ${filter === 'paid' ? 'active' : ''}`}
                 onClick={() => setFilter('paid')}
               >
@@ -201,7 +257,13 @@ function InvoiceHistory() {
             </div>
           </div>
           
-          {loading ? (
+          {!token || !currentUser ? (
+            <div className="auth-required-message">
+              <i className="fas fa-lock"></i>
+              <h2>Authentication Required</h2>
+              <p>You must be logged in to view invoices.</p>
+            </div>
+          ) : loading ? (
             <div className="loading-indicator">
               <i className="fas fa-spinner fa-spin"></i> Loading invoices...
             </div>
@@ -252,26 +314,61 @@ function InvoiceHistory() {
                         </span>
                       </td>
                       <td className="actions-cell">
-                        <div className="dropdown">
-                          <button className="action-btn dropdown-toggle">
+                        <div className="dropdown" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            className="action-btn dropdown-toggle"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleDropdown(invoice.id);
+                            }}
+                          >
                             <i className="fas fa-ellipsis-v"></i>
                           </button>
-                          <div className="dropdown-menu">
-                            <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
-                              <i className="fas fa-file-pdf"></i> View PDF
-                            </a>
-                            {invoice.xmlUrl && (
-                              <a href={invoice.xmlUrl} target="_blank" rel="noopener noreferrer">
-                                <i className="fas fa-file-code"></i> View XML
-                              </a>
-                            )}
-                            <button
-                              className="dropdown-item"
-                              onClick={() => handleDeleteInvoice(invoice.id)}
-                            >
-                              <i className="fas fa-trash"></i> Delete
-                            </button>
-                          </div>
+                          {openDropdownId === invoice.id && (
+                            <div className="dropdown-menu show">
+                              {/* Use either the URL or the direct content endpoint */}
+                              {invoice.pdf_url || invoice.pdf_content ? (
+                                <a 
+                                  href={invoice.pdf_url || `${BACKEND_URL}/api/invoice/${invoice.id}/pdf`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="dropdown-item"
+                                >
+                                  <i className="fas fa-file-pdf"></i> View PDF
+                                </a>
+                              ) : (
+                                <span className="dropdown-item disabled">
+                                  <i className="fas fa-file-pdf"></i> PDF Not Available
+                                </span>
+                              )}
+                              
+                              {/* Use either the URL or the direct content endpoint */}
+                              {invoice.xml_url || invoice.xml_content ? (
+                                <a 
+                                  href={invoice.xml_url || `${BACKEND_URL}/api/invoice/${invoice.id}/xml`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="dropdown-item"
+                                >
+                                  <i className="fas fa-file-code"></i> View XML
+                                </a>
+                              ) : (
+                                <span className="dropdown-item disabled">
+                                  <i className="fas fa-file-code"></i> XML Not Available
+                                </span>
+                              )}
+                              
+                              <button
+                                className="dropdown-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteInvoice(invoice.id);
+                                }}
+                              >
+                                <i className="fas fa-trash"></i> Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

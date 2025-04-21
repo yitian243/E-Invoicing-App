@@ -101,7 +101,7 @@ export async function logoutRequest(token: string) {
 }
 
 /**
- * Clear the data store
+ * Clear the data store (now a no-op with Supabase)
  */
 export async function clearDataStore() {
   try {

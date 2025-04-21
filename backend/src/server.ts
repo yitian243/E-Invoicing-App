@@ -3,9 +3,8 @@ import express, { Request, Response } from 'express';
 import authRoutes from './auth';
 import businessRoutes from './business';
 import { BACKEND_PORT } from './config';
-import { initializeDataStore, resetDataStore } from './dataStore';
+import contactRoutes from './contact';
 import invoiceRoutes from './invoice';
-import contactRoutes from './contact'
 
 // Initialise app
 const app = express();
@@ -16,16 +15,13 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/invoice', invoiceRoutes);
-app.use('/api/contact', contactRoutes)
+app.use('/api/contact', contactRoutes);
 
 // Testing Endpoint
 app.delete('/api/testing/clear-users', (req: Request, res: Response) => {
-  resetDataStore();
-  res.json({ success: true });
+  // This endpoint is no longer needed with Supabase
+  res.json({ success: true, message: 'Using Supabase database' });
 });
-
-// Initialising temporary data store
-initializeDataStore();
 
 // Start Server
 app.listen(BACKEND_PORT, () => {

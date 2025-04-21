@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Contacts.css';
+import { useAuth } from './AuthContext';
 import Sidebar from './Sidebar';
 
 function Contacts() {
@@ -40,10 +41,20 @@ function Contacts() {
     };
   };
 
+  // Get authentication context
+  const { token, currentUser } = useAuth();
+
   useEffect(() => {
     const fetchContacts = async () => {
+      if (!token || !currentUser) return;
+      
       try {
-        const response = await fetch('http://localhost:5000/api/contact/getContacts');
+        const response = await fetch('http://localhost:5000/api/contact/getContacts', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
         if (!response.ok) {
           throw new Error('Failed to fetch contacts');
         }
@@ -53,12 +64,11 @@ function Contacts() {
         setFilteredContacts(data);
       } catch (error) {
         console.error('Error fetching contacts:', error);
-      } finally {
       }
     };
   
     fetchContacts();
-  }, []);
+  }, [token, currentUser]);
 
   // Handle search and filter changes
   useEffect(() => {
@@ -175,6 +185,14 @@ function Contacts() {
         taxNumber: validation.message
       });
     }
+    // Special validation for tax number
+    if (name === 'taxNumber') {
+      const validation = validateTaxNumber(value);
+      setErrors({
+        ...errors,
+        taxNumber: validation.message
+      });
+    }
     setFormData({
       ...formData,
       [name]: value
@@ -182,7 +200,13 @@ function Contacts() {
   };
 
   const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token || !currentUser) {
+      alert('You must be logged in to perform this action');
+      return;
+    }
     
     // Validate tax number before submission
     const taxValidation = validateTaxNumber(formData.taxNumber);
@@ -197,6 +221,12 @@ function Contacts() {
     const url = formMode === 'add' 
       ? 'http://localhost:5000/api/contact/create' // POST route for adding contact
       : `http://localhost:5000/api/contact/update/${formData.id}`; // PUT route for updating contact
+    
+    // Add user_id to the form data for new contacts
+    const contactData = {
+      ...formData,
+      user_id: currentUser.id // Add the user_id from the current user
+    };
   
     try {
       // Sending the data to the backend
@@ -204,8 +234,9 @@ function Contacts() {
         method: formMode === 'add' ? 'POST' : 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData), // Send the formData as the request body
+        body: JSON.stringify(contactData), // Send the contactData as the request body
       });
   
       if (!response.ok) {
@@ -234,11 +265,19 @@ function Contacts() {
   
 
   const handleDeleteContact = async (id) => {
+    if (!token || !currentUser) {
+      alert('You must be logged in to perform this action');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this contact?')) {
       try {
         // Send DELETE request to the backend to delete the contact
         const response = await fetch(`http://localhost:5000/api/contact/delete/${id}`, {
           method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
   
         if (!response.ok) {
@@ -559,6 +598,7 @@ function Contacts() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
                 
@@ -611,6 +651,7 @@ function Contacts() {
                     value={formData.city}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
           
@@ -623,6 +664,7 @@ function Contacts() {
                     value={formData.street}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
 
@@ -634,6 +676,7 @@ function Contacts() {
                     name="postcode"
                     value={formData.postcode}
                     onChange={handleInputChange}
+                    required
                     required
                   />
                 </div>
@@ -652,7 +695,15 @@ function Contacts() {
                   pattern="\d{9}" // HTML5 pattern validation
                   title="Tax number must be exactly 9 digits"
 
+                  required
+                  maxlength="9"
+                  pattern="\d{9}" // HTML5 pattern validation
+                  title="Tax number must be exactly 9 digits"
+
                 />
+                {errors.taxNumber && (
+                  <div className="error-message">{errors.taxNumber}</div>
+                )}
                 {errors.taxNumber && (
                   <div className="error-message">{errors.taxNumber}</div>
                 )}

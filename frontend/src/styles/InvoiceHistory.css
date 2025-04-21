@@ -5,6 +5,8 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     margin-bottom: 2rem;
     overflow: visible;
+    min-height: 600px; /* Increase minimum height to accommodate dropdowns */
+    position: relative; /* Ensure proper positioning context */
   }
   
   /* Filters Bar */
@@ -75,6 +77,9 @@
   /* Invoice Table */
   .invoice-table-container {
     overflow-x: auto;
+    overflow-y: visible; /* Allow dropdowns to extend beyond */
+    position: relative; /* Create positioning context */
+    padding-bottom: 100px; /* Add padding at the bottom to prevent scrolling */
   }
   
   .invoice-table {
@@ -142,9 +147,20 @@
     color: #dc3545;
   }
   
+  .status-validated {
+    background-color: #e6f7ff;
+    color: #0088cc;
+  }
+  
+  .status-sent {
+    background-color: #e6f0ff;
+    color: #0066ff;
+  }
+  
   /* Action Buttons */
   .actions-cell {
     white-space: nowrap;
+    position: relative; /* Create positioning context for dropdown */
   }
   
   .action-btn {
@@ -311,17 +327,22 @@
     z-index: 9999;
     overflow: visible;
   
-    /* Ensure it doesn’t affect layout or scrolling */
+    /* Ensure it doesn't affect layout or scrolling */
     pointer-events: auto;
     white-space: nowrap;
+    
+    /* Ensure dropdown is not cut off */
+    max-height: none;
+    transform: translateY(0); /* Prevent any transform that might affect positioning */
   }
   
-  .dropdown:hover .dropdown-menu {
+  .dropdown-menu.show {
     display: block;
   }
   
   .dropdown-menu a,
-  .dropdown-menu button {
+  .dropdown-menu button,
+  .dropdown-menu .dropdown-item {
     width: 100%;
     padding: 10px 16px;
     display: block;
@@ -332,6 +353,11 @@
     text-align: left;
     font-size: 0.9rem;
     transition: background-color 0.2s;
+  }
+  
+  .dropdown-menu .dropdown-item.disabled {
+    color: #aaa;
+    cursor: not-allowed;
   }
   
   .dropdown-menu a i,

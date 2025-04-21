@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
+import React, { useEffect, useState } from 'react';
 import '../styles/Business.css';
-import { BACKEND_URL } from './config';
 import { useAuth } from './AuthContext';
+import { BACKEND_URL } from './config';
+import Sidebar from './Sidebar';
 
 function Business() {
   const [isEditing, setIsEditing] = useState(false);
@@ -10,6 +10,11 @@ function Business() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const { currentUser, token } = useAuth();
+  
+  // State for all businesses the user is a member of
+  const [userBusinesses, setUserBusinesses] = useState([]);
+  // State for the currently selected business
+  const [selectedBusinessId, setSelectedBusinessId] = useState('');
   
   const [businessData, setBusinessData] = useState({
     id: '',
@@ -34,7 +39,7 @@ function Business() {
       try {
         setLoading(true);
         
-        // Get current user's business
+        // Get all businesses the user is a member of
         const response = await fetch(`${BACKEND_URL}/api/business/user/${currentUser.id}`, {
           method: 'GET',
           headers: {
@@ -56,7 +61,17 @@ function Business() {
         const businesses = await response.json();
         
         if (businesses && businesses.length > 0) {
-          setBusinessData(businesses[0]);
+          setUserBusinesses(businesses);
+          
+          // Set the first business as selected by default
+          const firstBusinessId = businesses[0].id;
+          setSelectedBusinessId(firstBusinessId);
+          
+          // Load the selected business data
+          const selectedBusiness = businesses.find(b => b.id === firstBusinessId);
+          if (selectedBusiness) {
+            setBusinessData(selectedBusiness);
+          }
         }
         setLoading(false);
       } catch (err) {
@@ -72,6 +87,15 @@ function Business() {
       setLoading(false);
     }
   }, [currentUser, token]);
+  
+  // Function to handle business selection
+  const handleBusinessSelect = (businessId) => {
+    setSelectedBusinessId(businessId);
+    const selectedBusiness = userBusinesses.find(b => b.id === businessId);
+    if (selectedBusiness) {
+      setBusinessData(selectedBusiness);
+    }
+  };
 
   // dynamically updates the business data
   const handleInputChange = (e) => {
@@ -263,6 +287,25 @@ function Business() {
             </button>
           )}
         </div>
+        
+        {/* Business Selector */}
+        {userBusinesses.length > 0 && (
+          <div className="business-selector">
+            <label htmlFor="business-select">Select Business:</label>
+            <select 
+              id="business-select"
+              value={selectedBusinessId}
+              onChange={(e) => handleBusinessSelect(e.target.value)}
+              disabled={loading || isEditing}
+            >
+              {userBusinesses.map(business => (
+                <option key={business.id} value={business.id}>
+                  {business.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {error && <div className="error-message">{error}</div>}
 

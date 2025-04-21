@@ -1,7 +1,8 @@
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-import './styles/App.css';
 import { AuthProvider } from './components/AuthContext';
+import Business from './components/Business';
 import Contacts from './components/Contacts';
 import Dashboard from './components/Dashboard';
 import InvoiceCreation from './components/InvoiceCreation';
@@ -12,9 +13,7 @@ import InvoiceValidation from './components/InvoiceValidation';
 import Login from './components/Login';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
-import Business from './components/Business';
 import Signup from './components/Signup';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 
 function App() {
   return (

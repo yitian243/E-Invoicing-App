@@ -1,7 +1,7 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
 
 // Constants
 const SECRET_KEY = 'your-invoice-app-secret-key';
@@ -41,16 +41,6 @@ export interface Business {
   password: string;
   created_at: string;
   updated_at?: string;
-}
-
-export interface Data {
-  users: User[];
-  usersTotal: number;
-  invoices: Invoice[];
-  invoicesTotal: number;
-  businesses: Business[];
-  contacts: Contact[];
-  contactsTotal: number;
 }
 
 export interface InvoiceItem {
@@ -98,6 +88,16 @@ export interface Contact {
   notes: string;
   invoiceCount: number,
   totalValue: number
+}
+
+export interface Data {
+  users: User[];
+  usersTotal: number;
+  invoices: Invoice[];
+  invoicesTotal: number;
+  businesses: Business[];
+  contacts: Contact[];
+  contactsTotal: number;
 }
 
 // Initial data state

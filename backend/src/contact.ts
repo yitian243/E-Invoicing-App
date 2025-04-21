@@ -1,12 +1,5 @@
 import { Request, Response, Router } from 'express';
-
-import {
-    Contact,
-    getData,
-    getContacts,
-    getClients,
-    setData
-} from './dataStore';
+import { supabaseAdmin } from './db';
 
 // Initialize router
 const router = Router();
@@ -28,7 +21,7 @@ const createErrorResponse = (message: string, statusCode: number) => {
  * Route to add a new contact (Client, Vendor, or Other)
  * @route POST /api/contact/create
  */
-router.post('/create', (req: Request, res: Response) => {
+router.post('/create', async (req: Request, res: Response) => {
   const {
     name,
     type,
@@ -41,13 +34,11 @@ router.post('/create', (req: Request, res: Response) => {
     taxNumber,
     notes = '',
     lastInteraction,
-    invoiceCount,
-    totalValue,
+    user_id, // Added user_id parameter
   } = req.body;
 
-  console.log(type)
   // Validate required fields
-  if (!name || !type || !email || !city || !street || !postcode || !taxNumber) {
+  if (!name || !type || !email || !city || !street || !postcode || !taxNumber || !user_id) {
     return res.status(400).json({ error: 'Missing required contact data' });
   }
   if (!['client', 'vendor', 'other'].includes(type)) {
@@ -58,111 +49,279 @@ router.post('/create', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Tax number must be exactly 9 digits' });
   }
 
-  const data = getData();
-  const newId = data.contactsTotal + 1;
+  try {
+    // Find the business where the user is an admin
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', user_id)
+      .eq('role', 'admin');
 
-  const newContact = {
-    id: newId,
-    name,
-    type,
-    company,
-    email,
-    phone,
-    lastInteraction,  // given through frontend
-    city,
-    street,
-    postcode,
-    taxNumber,
-    notes,
-    invoiceCount,
-    totalValue
-  };
+    if (memberError || !memberData || memberData.length === 0) {
+      return res.status(403).json({ error: 'User is not an admin of any business' });
+    }
 
-  data.contacts.push(newContact);
-  data.contactsTotal += 1;
-  setData(data);
-  console.log(data.contacts)
-  res.status(201).json({
-    success: true,
-    data: newContact
-  });
-});
+    // Use the first business where the user is an admin
+    const business_id = memberData[0].business_id;
 
-/**
- * Route to get contacts
- * @route GET /api/contact/getContacts
- */
-router.get('/getContacts', (req: Request, res: Response): void => {
-    const contacts = getContacts();
-    res.status(200).json({
-        success: true,
-        data: contacts,
+    // Create contact in supabaseAdmin with the business_id
+    const { data: newContact, error } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .insert({
+        name,
+        type,
+        company,
+        email,
+        phone,
+        last_interaction: lastInteraction || new Date().toISOString(),
+        city,
+        street,
+        postcode,
+        tax_number: taxNumber,
+        notes,
+        invoice_count: 0,
+        total_value: 0,
+        business_id // Add the business_id to the contact
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating contact:', error);
+      return res.status(500).json({ error: 'Failed to create contact' });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: newContact
     });
+  } catch (error) {
+    console.error('Error creating contact:', error);
+    return res.status(500).json({ error: 'Failed to create contact' });
+  }
 });
 
 /**
- * Route to get clients
+ * Route to get all contacts
  * @route GET /api/contact/getContacts
  */
-router.get('/getContacts', (req: Request, res: Response): void => {
-  const clients = getClients();
-  res.status(200).json({
+router.get('/getContacts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Find businesses where user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (memberError || !memberData || memberData.length === 0) {
+      res.status(403).json({ error: 'User is not a member of any business' });
+      return;
+    }
+    
+    // Get all business IDs where user is a member
+    const businessIds = memberData.map(member => member.business_id);
+    
+    // Get contacts for these businesses
+    const { data: contacts, error } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .select('*')
+      .in('business_id', businessIds);
+
+    if (error) {
+      console.error('Error fetching contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: contacts,
+    });
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ error: 'Failed to fetch contacts' });
+  }
+});
+
+/**
+ * Route to get clients only
+ * @route GET /api/contact/getClients
+ */
+router.get('/getClients', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Find businesses where user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (memberError || !memberData || memberData.length === 0) {
+      res.status(403).json({ error: 'User is not a member of any business' });
+      return;
+    }
+    
+    // Get all business IDs where user is a member
+    const businessIds = memberData.map(member => member.business_id);
+    
+    // Get clients for these businesses
+    const { data: clients, error } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .select('*')
+      .eq('type', 'client')
+      .in('business_id', businessIds);
+
+    if (error) {
+      console.error('Error fetching clients:', error);
+      res.status(500).json({ error: 'Failed to fetch clients' });
+      return;
+    }
+
+    res.status(200).json({
       success: true,
       data: clients,
-  });
+    });
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    res.status(500).json({ error: 'Failed to fetch clients' });
+  }
 });
 
 /**
  * Route to delete a contact by ID
  * @route DELETE /api/contacts/delete/:id
- * @param {number} req.params.id - The ID of the contact to delete
+ * @param {string} req.params.id - The ID of the contact to delete
  * @returns {void} - Empty response with status code 204
  */
-router.delete('/delete/:id', (req: Request, res: Response): void => {
-  const contactId = parseInt(req.params.id, 10);
+router.delete('/delete/:id', async (req: Request, res: Response): Promise<void> => {
+  const contactId = req.params.id;
 
-  // Retrieve data from the data store
-  const data = getData();
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Find businesses where user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (memberError || !memberData || memberData.length === 0) {
+      res.status(403).json({ error: 'User is not a member of any business' });
+      return;
+    }
+    
+    // Get all business IDs where user is a member
+    const businessIds = memberData.map(member => member.business_id);
 
-  // Find the index of the contact with the given ID
-  const contactIndex = data.contacts.findIndex(contact => contact.id === contactId);
+    // Check if contact exists and belongs to one of the user's businesses
+    const { data: contact, error: checkError } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .select('id, business_id')
+      .eq('id', contactId)
+      .in('business_id', businessIds)
+      .single();
 
-  // If contact not found, return error response
-  if (contactIndex === -1) {
-    res.status(404).json({ error: 'Contact not found' });
-    return;
+    if (checkError || !contact) {
+      res.status(404).json({ error: 'Contact not found or you do not have permission to delete it' });
+      return;
+    }
+
+    // Delete the contact
+    const { error: deleteError } = await supabaseAdmin
+      .schema('business').from('contacts')
+      .delete()
+      .eq('id', contactId);
+
+    if (deleteError) {
+      console.error('Error deleting contact:', deleteError);
+      res.status(500).json({ error: 'Failed to delete contact' });
+      return;
+    }
+
+    // Send a 204 status code indicating successful deletion with no content
+    res.sendStatus(204);
+  } catch (error) {
+    console.error('Error deleting contact:', error);
+    res.status(500).json({ error: 'Failed to delete contact' });
   }
-
-  // Remove the contact from the contacts array
-  data.contacts.splice(contactIndex, 1);
-
-  // Save the updated data
-  setData(data);
-
-  // Send a 204 status code indicating successful deletion with no content
-  res.sendStatus(204);
 });
 
 /**
  * Route to update a contact by ID
  * @route PUT /api/contact/update/:id
- * @param {number} req.params.id - The ID of the contact to update
+ * @param {string} req.params.id - The ID of the contact to update
  * @param {Contact} req.body - The contact data to update
  * @returns {Contact} - The updated contact
  */
-router.put('/update/:id', (req: Request, res: Response) => {
+router.put('/update/:id', async (req: Request, res: Response) => {
   // Validate ID parameter
-  const contactId = parseInt(req.params.id, 10);
-  if (isNaN(contactId)) {
-    return res.status(400).json({ 
-      error: 'Invalid contact ID',
-      field: 'id'
-    });
-  }
+  const contactId = req.params.id;
 
   // Validate request body exists
   if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Request body must be a valid contact object' 
     });
   }
@@ -179,9 +338,7 @@ router.put('/update/:id', (req: Request, res: Response) => {
     company = '',
     phone = '',
     notes = '',
-    lastInteraction,
-    invoiceCount,
-    totalValue
+    lastInteraction
   } = req.body;
 
   // Validate required fields if they're being updated
@@ -240,34 +397,94 @@ router.put('/update/:id', (req: Request, res: Response) => {
     });
   }
 
-  // Retrieve contacts data
-  const data = getData();
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Find businesses where user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (memberError || !memberData || memberData.length === 0) {
+      res.status(403).json({ error: 'User is not a member of any business' });
+      return;
+    }
+    
+    // Get all business IDs where user is a member
+    const businessIds = memberData.map(member => member.business_id);
+    
+    // Check if contact exists and belongs to one of the user's businesses
+    const { data: contact, error: checkError } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .select('*')
+      .eq('id', contactId)
+      .in('business_id', businessIds)
+      .single();
 
-  // Find the contact to update
-  const contactIndex = data.contacts.findIndex(contact => contact.id === contactId);
-  if (contactIndex === -1) {
-    return res.status(404).json({ error: 'Contact not found' });
+    if (checkError || !contact) {
+      return res.status(404).json({ error: 'Contact not found or you do not have permission to update it' });
+      return;
+    }
+
+    // Prepare update data
+    const updateData = {
+      ...(name !== undefined && { name }),
+      ...(type !== undefined && { type }),
+      ...(company !== undefined && { company }),
+      ...(email !== undefined && { email }),
+      ...(phone !== undefined && { phone }),
+      ...(city !== undefined && { city }),
+      ...(street !== undefined && { street }),
+      ...(postcode !== undefined && { postcode }),
+      ...(taxNumber !== undefined && { tax_number: taxNumber.trim() }),
+      ...(notes !== undefined && { notes }),
+      ...(lastInteraction !== undefined && { last_interaction: lastInteraction }),
+      updated_at: new Date().toISOString()
+    };
+
+    // Update the contact
+    const { data: updatedContact, error: updateError } = await supabaseAdmin
+      .schema('business')
+      .from('contacts')
+      .update(updateData)
+      .eq('id', contactId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating contact:', updateError);
+      return res.status(500).json({ error: 'Failed to update contact' });
+    }
+
+    // Return the updated contact
+    return res.status(200).json({ 
+      success: true,
+      data: updatedContact 
+    });
+  } catch (error) {
+    console.error('Error updating contact:', error);
+    return res.status(500).json({ error: 'Failed to update contact' });
   }
-
-  // Create updated contact object
-  const updatedContact = { 
-    ...data.contacts[contactIndex], 
-    ...req.body,
-    // Ensure taxNumber is trimmed if provided
-    ...(taxNumber !== undefined ? { taxNumber: taxNumber.trim() } : {})
-  };
-
-  // Update the contact in the array
-  data.contacts[contactIndex] = updatedContact;
-
-  // Save updated data back to storage
-  setData(data);
-
-  // Return the updated contact
-  return res.status(200).json({ 
-    success: true,
-    data: updatedContact 
-  });
 });
 
 export default router;
