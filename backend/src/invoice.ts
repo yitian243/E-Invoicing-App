@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { supabaseAdmin } from './db';
+import { supabaseAdmin, supabase } from './db';
 
 // Initialize router
 const router = Router();
@@ -160,17 +160,14 @@ router.post('/create', async (req: Request, res: Response) => {
     }
 
     // Generate invoice number
-    const { count, error: countError } = await supabaseAdmin
-      .schema('billing')
-      .from('invoices')
-      .select('*', { count: 'exact', head: true });
-    
-    if (countError) {
-      console.error('Error getting invoice count:', countError);
-      return res.status(500).json({ error: 'Failed to generate invoice number' });
-    }
-    
-    const nextNumber = (count || 0) + 1;
+        // 1. Get the next invoice number
+    const { data, error } = await supabase
+    .from('invoice_counter')
+    .insert({})
+    .select('id')
+    .single();
+
+    const nextNumber = data?.id;
     const invoiceNumber = `INV-${String(nextNumber).padStart(6, '0')}`; // Format as INV-000001, INV-000002, etc.
 
     // 1. Create invoice in supabaseAdmin
@@ -748,18 +745,20 @@ router.post('/:id/validate', async (req: Request, res: Response): Promise<void> 
     
     // Set overall validation status
     results.valid = results.checks.every(check => check.passed);
-    
+
     // Update validation status in database if valid
     if (results.valid) {
-      await supabaseAdmin
-        .schema('billing')
-        .from('invoices')
-        .update({
-          validated: true,
-          validation_date: new Date().toISOString(),
-          status: 'validated' // Update status to 'validated'
-        })
-        .eq('id', invoiceId);
+      const { error } = await supabaseAdmin
+      .schema('billing')
+      .from('invoices')
+      .update({
+        status: 'validated'
+      })
+      .eq('id', invoiceId);
+
+      if (error) {
+        console.error("Update error:", error);
+      }
     }
     
     res.status(200).json({

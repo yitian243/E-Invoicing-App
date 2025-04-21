@@ -31,21 +31,21 @@ router.post('/create', async (req: Request, res: Response) => {
     city,
     street,
     postcode,
-    taxNumber,
+    tax_number,
     notes = '',
-    lastInteraction,
+    last_interaction,
     user_id, // Added user_id parameter
   } = req.body;
 
   // Validate required fields
-  if (!name || !type || !email || !city || !street || !postcode || !taxNumber || !user_id) {
+  if (!name || !type || !email || !city || !street || !postcode || !tax_number || !user_id) {
     return res.status(400).json({ error: 'Missing required contact data' });
   }
   if (!['client', 'vendor', 'other'].includes(type)) {
     return res.status(400).json({ error: 'Contact type must be Client, Vendor, or Other' });
   }
   // Validate tax number (exactly 9 digits)
-  if (!/^\d{9}$/.test(taxNumber)) {
+  if (!/^\d{9}$/.test(tax_number)) {
     return res.status(400).json({ error: 'Tax number must be exactly 9 digits' });
   }
 
@@ -75,11 +75,11 @@ router.post('/create', async (req: Request, res: Response) => {
         company,
         email,
         phone,
-        last_interaction: lastInteraction || new Date().toISOString(),
+        last_interaction: last_interaction || new Date().toISOString(),
         city,
         street,
         postcode,
-        tax_number: taxNumber,
+        tax_number,
         notes,
         invoice_count: 0,
         total_value: 0,
@@ -329,7 +329,7 @@ router.put('/update/:id', async (req: Request, res: Response) => {
   const {
     name,
     type,
-    taxNumber,
+    tax_number,
     email,
     city,
     street,
@@ -338,7 +338,7 @@ router.put('/update/:id', async (req: Request, res: Response) => {
     company = '',
     phone = '',
     notes = '',
-    lastInteraction
+    last_interaction
   } = req.body;
 
   // Validate required fields if they're being updated
@@ -358,12 +358,12 @@ router.put('/update/:id', async (req: Request, res: Response) => {
     }
   }
 
-  if (taxNumber !== undefined) {
+  if (tax_number !== undefined) {
     // Validate tax number format
-    if (typeof taxNumber !== 'string' || !/^\d{9}$/.test(taxNumber.trim())) {
+    if (typeof tax_number !== 'string' || !/^\d{9}$/.test(tax_number.trim())) {
       return res.status(400).json({ 
         error: 'Tax number must be exactly 9 digits',
-        field: 'taxNumber'
+        field: 'tax_number'
       });
     }
   }
@@ -456,9 +456,9 @@ router.put('/update/:id', async (req: Request, res: Response) => {
       ...(city !== undefined && { city }),
       ...(street !== undefined && { street }),
       ...(postcode !== undefined && { postcode }),
-      ...(taxNumber !== undefined && { tax_number: taxNumber.trim() }),
+      ...(tax_number !== undefined && { tax_number: tax_number.trim() }),
       ...(notes !== undefined && { notes }),
-      ...(lastInteraction !== undefined && { last_interaction: lastInteraction }),
+      ...(last_interaction !== undefined && { last_interaction: last_interaction }),
       updated_at: new Date().toISOString()
     };
 
