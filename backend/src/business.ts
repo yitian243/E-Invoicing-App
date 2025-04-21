@@ -1,73 +1,21 @@
+import crypto from 'crypto';
+import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { Business, BusinessMember, getData, setData } from './dataStore';
+import path from 'path';
+import { supabaseAdmin } from './db';
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const router = express.Router();
 
-// Get business by ID
-router.get('/:id', (req: Request, res: Response): void => {
-  try {
-    const { id } = req.params;
-    const data = getData();
-    
-    // Check if businesses array exists
-    if (!data.businesses) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    const business = data.businesses.find((b: Business) => b.id === id);
-    
-    if (!business) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    // Remove password before sending response
-    const { password, ...businessWithoutPassword } = business;
-    
-    res.status(200).json(businessWithoutPassword);
-  } catch (error) {
-    console.error('Error getting business:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Get business by user ID (where user is a member)
-router.get('/user/:userId', (req: Request, res: Response): void => {
-  try {
-    const { userId } = req.params;
-    const data = getData();
-    
-    if (!data.businesses) {
-      res.status(404).json({ error: 'No businesses found' });
-      return;
-    }
-    
-    const userBusinesses = data.businesses.filter((business: Business) => 
-      business.members.some(member => member.id === userId)
-    );
-    
-    if (userBusinesses.length === 0) {
-      res.status(404).json({ error: 'No businesses found for this user' });
-      return;
-    }
-    
-    // Remove passwords before sending response
-    const businessesWithoutPasswords = userBusinesses.map((business: Business) => {
-      const { password, ...businessWithoutPassword } = business;
-      return businessWithoutPassword;
-    });
-    
-    res.status(200).json(businessesWithoutPasswords);
-  } catch (error) {
-    console.error('Error getting user businesses:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Helper function to hash passwords
+const hashPassword = (password: string): string => {
+  return crypto.createHash('sha256').update(password).digest('hex');
+};
 
 // Create a new business
-router.post('/', (req: Request, res: Response): void => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, tax_id, address, email, default_currency, password, admin_id, admin_name, admin_email } = req.body;
     
@@ -76,58 +24,262 @@ router.post('/', (req: Request, res: Response): void => {
       return;
     }
     
-    const data = getData();
-    
-    // Initialize businesses array if it doesn't exist
-    if (!data.businesses) {
-      data.businesses = [];
-    }
-    
     // Check if business with the same name already exists
-    const existingBusiness = data.businesses.find((b: Business) => 
-      b.name.toLowerCase() === name.toLowerCase()
-    );
+    const { data: existingBusiness, error: checkError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id')
+      .ilike('name', name)
+      .single();
     
     if (existingBusiness) {
       res.status(400).json({ error: 'Business with this name already exists' });
       return;
     }
     
-    const newBusiness: Business = {
-      id: `business_${uuidv4()}`,
-      name,
-      tax_id,
-      address: address || '',
-      email: email || '',
-      default_currency: default_currency || 'AUD',
-      invoice_template: 'default',
-      admin_id,
-      password,
-      created_at: new Date().toISOString(),
-      members: [{
-        id: admin_id,
+    // Create new business with hashed password
+    const hashedPassword = hashPassword(password);
+    
+    // console.log('Creating business with data:', {
+    //   name,
+    //   tax_id,
+    //   address: address || '',
+    //   email: email || '',
+    //   default_currency: default_currency || 'AUD',
+    //   invoice_template: 'default',
+    //   admin_id,
+    //   password: hashedPassword,
+    //   created_at: new Date().toISOString()
+    // });
+    
+    let newBusiness;
+
+    try {
+      const { data, error: createError } = await supabaseAdmin
+        .schema('business')
+        .from('businesses')
+        .insert({
+          name,
+          tax_id,
+          address: address || '',
+          email: email || '',
+          default_currency: default_currency || 'AUD',
+          invoice_template: 'default',
+          admin_id,
+          password: hashedPassword,
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error('Error creating business:', createError);
+        console.error('Error details:', JSON.stringify(createError, null, 2));
+        res.status(500).json({ error: 'Failed to create business', details: createError });
+        return;
+      }
+      
+      if (!data) {
+        console.error('No business data returned after creation');
+        res.status(500).json({ error: 'Failed to create business - no data returned' });
+        return;
+      }
+      
+      newBusiness = data;
+      console.log('Business created successfully:', newBusiness);
+    } catch (err) {
+      console.error('Exception creating business:', err);
+      res.status(500).json({ error: 'Exception creating business', details: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    
+    // Add admin as a member
+    const { error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .insert({
         name: admin_name,
         email: admin_email,
         role: 'admin',
-        joined_at: new Date().toISOString()
-      }]
-    };
+        joined_at: new Date().toISOString(),
+        business_id: newBusiness.id,
+        user_id: admin_id
+      });
     
-    data.businesses.push(newBusiness);
-    setData(data);
+    if (memberError) {
+      console.error('Error adding admin as member:', memberError);
+      // Consider rolling back business creation here
+      res.status(500).json({ error: 'Failed to add admin as member' });
+      return;
+    }
     
-    // Remove password before sending response
-    const { password: _, ...businessWithoutPassword } = newBusiness;
-    
-    res.status(201).json(businessWithoutPassword);
+    res.status(201).json(newBusiness);
   } catch (error) {
     console.error('Error creating business:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// Join an existing business
+router.post('/join', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessName, password, userId, userName, userEmail } = req.body;
+    
+    if (!businessName || !password || !userId || !userName || !userEmail) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    // Find business by name
+    const { data: business, error: businessError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id, password')
+      .ilike('name', businessName)
+      .single();
+    
+    if (businessError || !business) {
+      res.status(404).json({ error: 'Business not found /join' });
+      return;
+    }
+    
+    // Verify password
+    const hashedPassword = hashPassword(password);
+    if (business.password !== hashedPassword) {
+      res.status(401).json({ error: 'Invalid password' });
+      return;
+    }
+    
+    const businessId = business.id;
+    
+    // Check if user is already a member
+    const { data: existingMember, error: memberCheckError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('id')
+      .eq('business_id', businessId)
+      .or(`user_id.eq.${userId},email.ilike.${userEmail}`)
+      .single();
+    
+    if (existingMember) {
+      res.status(400).json({ error: 'User is already a member of this business' });
+      return;
+    }
+    
+    // Add user as member
+    const { data: newMember, error: createError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .insert({
+        name: userName,
+        email: userEmail,
+        role: 'staff',
+        joined_at: new Date().toISOString(),
+        business_id: businessId,
+        user_id: userId
+      })
+      .select()
+      .single();
+    
+    if (createError || !newMember) {
+      console.error('Error adding member:', createError);
+      res.status(500).json({ error: 'Failed to add member to business' });
+      return;
+    }
+    
+    // Update business updated_at timestamp
+    await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', businessId);
+    
+    // Get updated business
+    const { data: updatedBusiness, error: getError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('*')
+      .eq('id', businessId)
+      .single();
+    
+    if (getError || !updatedBusiness) {
+      console.error('Error getting updated business:', getError);
+      res.status(200).json({ success: true, member: newMember });
+      return;
+    }
+    
+    res.status(200).json(updatedBusiness);
+  } catch (error) {
+    console.error('Error joining business:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get business by ID
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const { data: business, error } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error || !business) {
+      res.status(404).json({ error: 'Business not found get /:id' });
+      return;
+    }
+    
+    res.status(200).json(business);
+  } catch (error) {
+    console.error('Error getting business:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get business by user ID (where user is a member)
+router.get('/user/:userId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    
+    // First get all members for this user
+    const { data: members, error: membersError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (membersError || !members || members.length === 0) {
+      res.status(404).json({ error: 'No businesses found for this user' });
+      return;
+    }
+    
+    // Get all business IDs where user is a member
+    const businessIds = members.map(member => member.business_id);
+    
+    // Get all businesses for these IDs
+    const { data: businesses, error: businessesError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('*')
+      .in('id', businessIds);
+    
+    if (businessesError || !businesses || businesses.length === 0) {
+      res.status(404).json({ error: 'No businesses found for this user' });
+      return;
+    }
+    
+    res.status(200).json(businesses);
+  } catch (error) {
+    console.error('Error getting user businesses:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 // Update an existing business
-router.put('/:id', (req: Request, res: Response): void => {
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { name, tax_id, address, email, default_currency, password, user_id } = req.body;
@@ -137,149 +289,98 @@ router.put('/:id', (req: Request, res: Response): void => {
       return;
     }
     
-    const data = getData();
+    // Check if business exists
+    const { data: business, error: checkError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id, admin_id')
+      .eq('id', id)
+      .single();
     
-    if (!data.businesses) {
-      res.status(404).json({ error: 'Business not found' });
+    if (checkError || !business) {
+      res.status(404).json({ error: 'Business not found /:id' });
       return;
     }
-    
-    const businessIndex = data.businesses.findIndex((b: Business) => b.id === id);
-    
-    if (businessIndex === -1) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    const business = data.businesses[businessIndex];
     
     // Check if user is admin of the business
-    const isBizAdmin = business.members.some(member => 
-      member.id === user_id && member.role === 'admin'
-    );
+    const { data: member, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('role')
+      .eq('business_id', id)
+      .eq('user_id', user_id)
+      .eq('role', 'admin')
+      .single();
     
-    if (!isBizAdmin) {
+    if (memberError || !member) {
       res.status(403).json({ error: 'Only business admin can update business details' });
       return;
     }
     
-    // Update business
-    const updatedBusiness: Business = {
-      ...business,
-      name,
-      tax_id,
-      address,
-      email,
-      default_currency,
-      password,
-      updated_at: new Date().toISOString()
-    };
+    // Update business with hashed password
+    const hashedPassword = hashPassword(password);
     
-    data.businesses[businessIndex] = updatedBusiness;
-    setData(data);
+    const { data: updatedBusiness, error: updateError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .update({
+        name,
+        tax_id,
+        address,
+        email,
+        default_currency,
+        password: hashedPassword,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
     
-    // Remove password before sending response
-    const { password: _, ...businessWithoutPassword } = updatedBusiness;
+    if (updateError || !updatedBusiness) {
+      console.error('Error updating business:', updateError);
+      res.status(500).json({ error: 'Failed to update business' });
+      return;
+    }
     
-    res.status(200).json(businessWithoutPassword);
+    res.status(200).json(updatedBusiness);
   } catch (error) {
     console.error('Error updating business:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Join an existing business
-router.post('/join', (req: Request, res: Response): void => {
-  try {
-    const { businessName, password, userId, userName, userEmail } = req.body;
-    
-    if (!businessName || !password || !userId || !userName || !userEmail) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
-    }
-    
-    const data = getData();
-    
-    if (!data.businesses) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    // Find the business by name (case insensitive)
-    const businessIndex = data.businesses.findIndex((b: Business) => 
-      b.name.toLowerCase() === businessName.toLowerCase()
-    );
-    
-    if (businessIndex === -1) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    const business = data.businesses[businessIndex];
-    
-    // Validate password
-    if (business.password !== password) {
-      res.status(401).json({ error: 'Invalid password' });
-      return;
-    }
-    
-    // Check if user is already a member
-    const isAlreadyMember = business.members.some(member => 
-      member.id === userId || member.email.toLowerCase() === userEmail.toLowerCase()
-    );
-    
-    if (isAlreadyMember) {
-      res.status(400).json({ error: 'User is already a member of this business' });
-      return;
-    }
-    
-    // Add user as member
-    const newMember: BusinessMember = {
-      id: userId,
-      name: userName,
-      email: userEmail,
-      role: 'staff',
-      joined_at: new Date().toISOString()
-    };
-    
-    const updatedBusiness: Business = {
-      ...business,
-      members: [...business.members, newMember],
-      updated_at: new Date().toISOString()
-    };
-    
-    data.businesses[businessIndex] = updatedBusiness;
-    setData(data);
-    
-    // Remove password before sending response
-    const { password: _, ...businessWithoutPassword } = updatedBusiness;
-    
-    res.status(200).json(businessWithoutPassword);
-  } catch (error) {
-    console.error('Error joining business:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 // Get all business members
-router.get('/:id/members', (req: Request, res: Response): void => {
+router.get('/:id/members', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const data = getData();
     
-    if (!data.businesses) {
-      res.status(404).json({ error: 'Business not found' });
+    // Check if business exists
+    const { data: business, error: businessError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (businessError || !business) {
+      res.status(404).json({ error: 'Business not found /:id/members' });
       return;
     }
     
-    const business = data.businesses.find((b: Business) => b.id === id);
+    // Get all members for this business
+    const { data: members, error: membersError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('*')
+      .eq('business_id', id);
     
-    if (!business) {
-      res.status(404).json({ error: 'Business not found' });
+    if (membersError) {
+      console.error('Error getting business members:', membersError);
+      res.status(500).json({ error: 'Failed to get business members' });
       return;
     }
     
-    res.status(200).json(business.members);
+    res.status(200).json(members || []);
   } catch (error) {
     console.error('Error getting business members:', error);
     res.status(500).json({ error: 'Server error' });
@@ -287,7 +388,7 @@ router.get('/:id/members', (req: Request, res: Response): void => {
 });
 
 // Update member role
-router.put('/:businessId/members/:memberId', (req: Request, res: Response): void => {
+router.put('/:businessId/members/:memberId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { businessId, memberId } = req.params;
     const { role, user_id } = req.body;
@@ -297,48 +398,97 @@ router.put('/:businessId/members/:memberId', (req: Request, res: Response): void
       return;
     }
     
-    const data = getData();
+    // Check if business exists
+    const { data: business, error: businessError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id')
+      .eq('id', businessId)
+      .single();
     
-    if (!data.businesses) {
-      res.status(404).json({ error: 'Business not found' });
+    if (businessError || !business) {
+      res.status(404).json({ error: 'Business not found /:businessId/members/:memberId' });
       return;
     }
-    
-    const businessIndex = data.businesses.findIndex((b: Business) => b.id === businessId);
-    
-    if (businessIndex === -1) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    const business = data.businesses[businessIndex];
     
     // Check if user is admin of the business
-    const isBizAdmin = business.members.some(member => 
-      member.id === user_id && member.role === 'admin'
-    );
+    const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('user_id', user_id)
+      .eq('role', 'admin')
+      .single();
     
-    if (!isBizAdmin) {
+    if (adminCheckError || !adminCheck) {
       res.status(403).json({ error: 'Only business admin can update member roles' });
       return;
     }
     
-    // Find member
-    const memberIndex = business.members.findIndex(member => member.id === memberId);
+    // Check if member exists
+    const { data: member, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('business_id', businessId)
+      .single();
     
-    if (memberIndex === -1) {
+    if (memberError || !member) {
       res.status(404).json({ error: 'Member not found' });
       return;
     }
     
+    // If changing to staff role, make sure there's at least one other admin
+    if (role === 'staff') {
+      // Check if the member is currently an admin
+      const { data: currentRole, error: roleError } = await supabaseAdmin
+        .schema('business')
+        .from('members')
+        .select('role')
+        .eq('id', memberId)
+        .single();
+      
+      if (!roleError && currentRole && currentRole.role === 'admin') {
+        // Count how many admins there are
+        const { data: admins, error: countError } = await supabaseAdmin
+          .schema('business')
+          .from('members')
+          .select('id')
+          .eq('business_id', businessId)
+          .eq('role', 'admin');
+        
+        if (!countError && admins && admins.length <= 1) {
+          res.status(400).json({ error: 'Cannot remove the only admin of the business' });
+          return;
+        }
+      }
+    }
+    
     // Update member role
-    business.members[memberIndex].role = role;
-    business.updated_at = new Date().toISOString();
+    const { data: updatedMember, error: updateError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .update({ role })
+      .eq('id', memberId)
+      .select()
+      .single();
     
-    data.businesses[businessIndex] = business;
-    setData(data);
+    if (updateError || !updatedMember) {
+      console.error('Error updating member role:', updateError);
+      res.status(500).json({ error: 'Failed to update member role' });
+      return;
+    }
     
-    res.status(200).json(business.members[memberIndex]);
+    // Update business updated_at timestamp
+    await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', businessId);
+    
+    res.status(200).json(updatedMember);
   } catch (error) {
     console.error('Error updating member role:', error);
     res.status(500).json({ error: 'Server error' });
@@ -346,59 +496,88 @@ router.put('/:businessId/members/:memberId', (req: Request, res: Response): void
 });
 
 // Remove member from business
-router.delete('/:businessId/members/:memberId', (req: Request, res: Response): void => {
+router.delete('/:businessId/members/:memberId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { businessId, memberId } = req.params;
     const { user_id } = req.body;
     
-    const data = getData();
+    // Check if business exists
+    const { data: business, error: businessError } = await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .select('id')
+      .eq('id', businessId)
+      .single();
     
-    if (!data.businesses) {
+    if (businessError || !business) {
       res.status(404).json({ error: 'Business not found' });
       return;
     }
-    
-    const businessIndex = data.businesses.findIndex((b: Business) => b.id === businessId);
-    
-    if (businessIndex === -1) {
-      res.status(404).json({ error: 'Business not found' });
-      return;
-    }
-    
-    const business = data.businesses[businessIndex];
     
     // Check if user is admin of the business
-    const isBizAdmin = business.members.some(member => 
-      member.id === user_id && member.role === 'admin'
-    );
+    const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('user_id', user_id)
+      .eq('role', 'admin')
+      .single();
     
-    if (!isBizAdmin) {
+    if (adminCheckError || !adminCheck) {
       res.status(403).json({ error: 'Only business admin can remove members' });
       return;
     }
     
-    // Cannot remove admin if they are the only admin
-    const isTargetAdmin = business.members.find(member => member.id === memberId)?.role === 'admin';
-    const adminCount = business.members.filter(member => member.role === 'admin').length;
+    // Check if member exists
+    const { data: member, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('role')
+      .eq('id', memberId)
+      .eq('business_id', businessId)
+      .single();
     
-    if (isTargetAdmin && adminCount <= 1) {
-      res.status(400).json({ error: 'Cannot remove the only admin of the business' });
-      return;
-    }
-    
-    // Remove member
-    const updatedMembers = business.members.filter(member => member.id !== memberId);
-    
-    if (updatedMembers.length === business.members.length) {
+    if (memberError || !member) {
       res.status(404).json({ error: 'Member not found' });
       return;
     }
     
-    business.members = updatedMembers;
-    business.updated_at = new Date().toISOString();
+    // Cannot remove admin if they are the only admin
+    if (member.role === 'admin') {
+      // Count how many admins there are
+      const { data: admins, error: countError } = await supabaseAdmin
+        .schema('business')
+        .from('members')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('role', 'admin');
+      
+      if (!countError && admins && admins.length <= 1) {
+        res.status(400).json({ error: 'Cannot remove the only admin of the business' });
+        return;
+      }
+    }
     
-    data.businesses[businessIndex] = business;
-    setData(data);
+    // Remove member
+    const { error: deleteError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .delete()
+      .eq('id', memberId);
+    
+    if (deleteError) {
+      console.error('Error removing member:', deleteError);
+      res.status(500).json({ error: 'Failed to remove member' });
+      return;
+    }
+    
+    // Update business updated_at timestamp
+    await supabaseAdmin
+      .schema('business')
+      .from('businesses')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', businessId);
     
     res.status(200).json({ message: 'Member removed successfully' });
   } catch (error) {

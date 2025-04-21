@@ -1,11 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getInvoicesRequest } from '../invoiceWrapper';
 import '../styles/InvoiceSending.css';
+import { useAuth } from './AuthContext';
+import { BACKEND_URL } from './config';
 import Sidebar from './Sidebar';
 
 function InvoiceSending() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { token, currentUser } = useAuth();
+  const [businessName, setBusinessName] = useState('Your Company');
+  
+  // Get invoice ID from URL query parameters
+  const queryParams = new URLSearchParams(location.search);
+  const invoiceIdFromUrl = queryParams.get('invoiceId');
   const [invoices, setInvoices] = useState([]);
+  const [error, setError] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [sendingOptions, setSendingOptions] = useState({
@@ -26,49 +37,48 @@ function InvoiceSending() {
   const [sendingComplete, setSendingComplete] = useState(false);
   const [emailPreview, setEmailPreview] = useState(false);
 
-  // Load invoices from localStorage
+  // Fetch business information
   useEffect(() => {
-    const savedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    // Filter for validated invoices or pending invoices
-    const validInvoices = savedInvoices.filter(inv => 
-      inv.validated || (inv.status && inv.status === 'pending')
-    );
-    setInvoices(validInvoices);
-  }, []);
-
-  // Select an invoice
-  const handleInvoiceSelect = (e) => {
-    const id = e.target.value;
-    setSelectedInvoiceId(id);
+    const fetchBusinessInfo = async () => {
+      if (!token || !currentUser) return;
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/business/user/${currentUser.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const businesses = await response.json();
+          if (businesses && businesses.length > 0) {
+            // Use the first business name
+            setBusinessName(businesses[0].name);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching business info:', error);
+      }
+    };
     
-    if (!id) {
-      setSelectedInvoice(null);
-      setEmailSubjectAndMessage('', null);
-      return;
-    }
-    
-    setLoading(true);
-    const invoice = invoices.find(inv => inv.id === id);
-    setSelectedInvoice(invoice);
-    
-    // Set default email subject and message based on selected invoice
-    setEmailSubjectAndMessage(id, invoice);
-    
-    setLoading(false);
-  };
+    fetchBusinessInfo();
+  }, [token, currentUser]);
 
   // Set email subject and message with invoice details
-  const setEmailSubjectAndMessage = (id, invoice) => {
+  const setEmailSubjectAndMessage = useCallback((id, invoice) => {
     if (!id || !invoice) {
       setSendingOptions(prev => ({
         ...prev,
         emailSubject: '',
-        emailMessage: ''
+        emailMessage: '',
+        emailRecipients: ''
       }));
       return;
     }
     
-    const subject = `Invoice ${invoice.invoiceNumber} from Your Company`;
+    const subject = `Invoice ${invoice.invoiceNumber} from ${businessName}`;
     
     const dueDate = new Date(invoice.dueDate).toLocaleDateString('en-US', {
       year: 'numeric', 
@@ -95,13 +105,81 @@ If you have any questions, please don't hesitate to contact us.
 Thank you for your business!
 
 Best regards,
-Your Company`;
+${businessName}`;
+    
+    // Auto-fill recipient email with the client's email address
+    const recipientEmail = invoice.client_email || invoice.clientEmail || '';
     
     setSendingOptions(prev => ({
       ...prev,
       emailSubject: subject,
-      emailMessage: message
+      emailMessage: message,
+      emailRecipients: recipientEmail
     }));
+  }, [businessName]);
+
+  // Load invoices from backend API
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      if (!token || !currentUser) {
+        setError('You must be logged in to send invoices');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const response = await getInvoicesRequest(token);
+        
+        if (typeof response === 'number') {
+          throw new Error(`Failed to fetch invoices: ${response}`);
+        }
+        
+        // Filter for validated invoices or pending invoices
+        const validInvoices = response.data.filter(inv => 
+          inv.validated || (inv.status && inv.status === 'pending')
+        );
+        
+        setInvoices(validInvoices);
+        
+        // Auto-select invoice if ID is provided in URL
+        if (invoiceIdFromUrl) {
+          const invoiceToSelect = validInvoices.find(inv => inv.id === invoiceIdFromUrl);
+          if (invoiceToSelect) {
+            setSelectedInvoiceId(invoiceIdFromUrl);
+            setSelectedInvoice(invoiceToSelect);
+            setEmailSubjectAndMessage(invoiceIdFromUrl, invoiceToSelect);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        setError('Failed to load invoices. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoices();
+  }, [token, currentUser, invoiceIdFromUrl, setEmailSubjectAndMessage]);
+
+  // Select an invoice
+  const handleInvoiceSelect = (e) => {
+    const id = e.target.value;
+    setSelectedInvoiceId(id);
+    
+    if (!id) {
+      setSelectedInvoice(null);
+      setEmailSubjectAndMessage('', null);
+      return;
+    }
+    
+    setLoading(true);
+    const invoice = invoices.find(inv => inv.id === id);
+    setSelectedInvoice(invoice);
+    
+    // Set default email subject and message based on selected invoice
+    setEmailSubjectAndMessage(id, invoice);
+    
+    setLoading(false);
   };
 
   // Handle input changes
@@ -126,40 +204,46 @@ Your Company`;
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedInvoice) return;
     
     setSending(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mark invoice as sent in localStorage
-      const updatedInvoices = invoices.map(inv => {
-        if (inv.id === selectedInvoiceId) {
-          return {
-            ...inv,
-            status: 'sent',
-            sentDate: new Date().toISOString(),
-            sentMethod: sendingOptions.method,
-            sentTo: sendingOptions.emailRecipients
-          };
-        }
-        return inv;
+    try {
+      // Call backend API to send invoice email
+      const response = await fetch(`${BACKEND_URL}/api/invoice/${selectedInvoice.id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          method: sendingOptions.method,
+          recipients: sendingOptions.emailRecipients,
+          cc: sendingOptions.emailCc,
+          bcc: sendingOptions.emailBcc,
+          subject: sendingOptions.emailSubject,
+          message: sendingOptions.emailMessage,
+          includeAttachment: sendingOptions.includeAttachment,
+          includePaymentLink: sendingOptions.includePaymentLink,
+          scheduleTime: sendingOptions.scheduleTime,
+          autoReminders: sendingOptions.autoReminders,
+          reminderDays: sendingOptions.reminderDays
+        })
       });
       
-      // Update all invoices in localStorage
-      const allInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-      const updatedAllInvoices = allInvoices.map(inv => {
-        const updatedInv = updatedInvoices.find(u => u.id === inv.id);
-        return updatedInv || inv;
-      });
-      
-      localStorage.setItem('invoices', JSON.stringify(updatedAllInvoices));
+      if (!response.ok) {
+        throw new Error(`Failed to send invoice: ${response.status}`);
+      }
       
       setSending(false);
       setSendingComplete(true);
-    }, 2000);
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      setError('Failed to send invoice. Please try again.');
+      setSending(false);
+    }
   };
 
   // Handle going back to invoice history
@@ -179,8 +263,16 @@ Your Company`;
           </Link>
         </div>
         
+        {error && <div className="error-message">{error}</div>}
+        
         <div className="sending-container">
-          {!sendingComplete ? (
+          {!token || !currentUser ? (
+            <div className="auth-required-message">
+              <i className="fas fa-lock"></i>
+              <h2>Authentication Required</h2>
+              <p>You must be logged in to send invoices.</p>
+            </div>
+          ) : !sendingComplete ? (
             <form onSubmit={handleSubmit} className="sending-form">
               <div className="sending-step">
                 <h2>1. Select an Invoice to Send</h2>
@@ -214,7 +306,7 @@ Your Company`;
                     <div className="invoice-preview">
                       <div className="preview-header">
                         <div className="company-logo">
-                          <i className="fas fa-building"></i> Your Company
+                          <i className="fas fa-building"></i> {businessName}
                         </div>
                         <div className="invoice-badge">INVOICE</div>
                       </div>
@@ -248,7 +340,11 @@ Your Company`;
                           
                           <div className="detail-section">
                             <h4>Status:</h4>
-                            <p className="invoice-status">{selectedInvoice.status || 'Pending'}</p>
+                            <p className="invoice-status">
+                              {selectedInvoice.status ? 
+                                selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1) : 
+                                (selectedInvoice.validated ? 'Validated' : 'Pending')}
+                            </p>
                           </div>
                         </div>
                       </div>

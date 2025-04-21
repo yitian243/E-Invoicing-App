@@ -6,7 +6,28 @@ import {
   registerRequest,
   validateTokenRequest
 } from './authWrapper';
-import { resetDataStore } from './dataStore';
+
+// Mock Supabase
+jest.mock('./db', () => ({
+  supabaseAdmin: {
+    schema: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
+    is: jest.fn().mockReturnThis(),
+    single: jest.fn().mockReturnThis(),
+    auth: {
+      getUser: jest.fn(),
+      signUp: jest.fn(),
+      signIn: jest.fn(),
+      signOut: jest.fn()
+    }
+  }
+}));
 
 describe('Authentication API Tests', () => {
   beforeAll(() => {
@@ -14,10 +35,11 @@ describe('Authentication API Tests', () => {
   });
 
   afterAll(async () => {
-    resetDataStore();
+    jest.clearAllMocks();
   });
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     await clearDataStore();
   });
 

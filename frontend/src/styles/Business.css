@@ -12,11 +12,45 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   padding: 1rem;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Business Selector Styles */
+.business-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.business-selector label {
+  font-weight: 500;
+  color: #555;
+  margin-right: 0.5rem;
+}
+
+.business-selector select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 1rem;
+  min-width: 200px;
+  cursor: pointer;
+}
+
+.business-selector select:focus {
+  outline: none;
+  border-color: #10316B;
+  box-shadow: 0 0 0 2px rgba(16, 49, 107, 0.2);
 }
 
 .business-card {
