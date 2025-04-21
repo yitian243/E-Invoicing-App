@@ -50,6 +50,8 @@ export interface Data {
   invoices: Invoice[];
   invoicesTotal: number;
   businesses: Business[];
+  contacts: Contact[];
+  contactsTotal: number;
 }
 
 export interface InvoiceItem {
@@ -62,7 +64,8 @@ export interface InvoiceItem {
 export interface Invoice {
   id: number;
   invoiceNumber: string;
-  client: string;
+  contactId: number;
+  clientName: string;
   issueDate: string | Date;
   dueDate: string | Date;
   subtotal: number;
@@ -81,7 +84,22 @@ export interface Invoice {
   xmlUrl: string;
 }
 
-
+export interface Contact {
+  id: number;
+  name: string;
+  type: "Client" | "Vendor" | "Other";
+  company: string;
+  email: string;
+  phone: string;
+  lastInteraction: Date;
+  city: string;
+  street: string;
+  postcode: string;
+  taxNumber: string;
+  notes: string;
+  invoiceCount: number,
+  totalValue: number
+}
 
 // Initial data state
 let dataStore: Data = {
@@ -89,7 +107,9 @@ let dataStore: Data = {
   usersTotal: 0,
   invoices: [],
   invoicesTotal: 0,
-  businesses: []
+  businesses: [],
+  contacts: [],
+  contactsTotal: 0,
 };
 
 /**
@@ -144,6 +164,28 @@ export function getBusinesses(): Business[] {
   return dataStore.businesses || [];
 }
 
+/** 
+ * Gets all contacts
+ * @returns Array of contacts
+ */
+export function getContacts(): Contact[] {
+  return dataStore.contacts || [];
+}
+
+/** 
+ * Gets all clients
+ * @returns Array of contacts
+ */
+export function getClients(): Contact[] {
+  let clients = []
+  for (let i = 0; i < dataStore.contacts.length; i++) {
+    if (dataStore.contacts[i].type === "Client") {
+      clients.push(dataStore.contacts[i]);
+    }
+  }
+  return clients || [];
+}
+
 /**
  * Creates a hash from a string using the secret key
  * @param str String to hash
@@ -196,7 +238,9 @@ export function resetDataStore(): Record<string, never> {
     usersTotal: 0,
     invoices: [],
     invoicesTotal: 0,
-    businesses: []
+    businesses: [],
+    contacts: [],
+    contactsTotal: 0
   };
 
   // Remove database file if it exists

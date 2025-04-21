@@ -185,12 +185,21 @@ function Contacts() {
         taxNumber: validation.message
       });
     }
+    // Special validation for tax number
+    if (name === 'taxNumber') {
+      const validation = validateTaxNumber(value);
+      setErrors({
+        ...errors,
+        taxNumber: validation.message
+      });
+    }
     setFormData({
       ...formData,
       [name]: value
     });
   };
 
+  const handleSubmit = async (e) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -589,6 +598,7 @@ function Contacts() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
                 
@@ -641,6 +651,7 @@ function Contacts() {
                     value={formData.city}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
           
@@ -653,6 +664,7 @@ function Contacts() {
                     value={formData.street}
                     onChange={handleInputChange}
                     required
+                    required
                   />
                 </div>
 
@@ -664,6 +676,7 @@ function Contacts() {
                     name="postcode"
                     value={formData.postcode}
                     onChange={handleInputChange}
+                    required
                     required
                   />
                 </div>
@@ -682,7 +695,15 @@ function Contacts() {
                   pattern="\d{9}" // HTML5 pattern validation
                   title="Tax number must be exactly 9 digits"
 
+                  required
+                  maxlength="9"
+                  pattern="\d{9}" // HTML5 pattern validation
+                  title="Tax number must be exactly 9 digits"
+
                 />
+                {errors.taxNumber && (
+                  <div className="error-message">{errors.taxNumber}</div>
+                )}
                 {errors.taxNumber && (
                   <div className="error-message">{errors.taxNumber}</div>
                 )}
