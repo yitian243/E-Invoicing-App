@@ -23,18 +23,18 @@ function Contacts() {
     city: '',
     street: '',
     postcode: '',
-    taxNumber: '',
+    tax_number: '',
     notes: '',
-    lastInteraction: ''
+    last_interaction: ''
   });
   const [errors, setErrors] = useState({
     taxNumber: ''
   });
 
 
-  const validateTaxNumber = (taxNumber) => {
+  const validateTaxNumber = (value) => {
     // Check if it's exactly 9 digits
-    const isValid = /^\d{9}$/.test(taxNumber);
+    const isValid = /^\d{9}$/.test(value);
     return {
       isValid,
       message: isValid ? '' : 'Tax number must be exactly 9 digits'
@@ -145,7 +145,7 @@ function Contacts() {
       city: '',
       street: '',
       postcode: '',
-      taxNumber: '',
+      tax_number: '',
       notes: '',
       lastInteraction: new Date().toISOString().split('T')[0],
       invoiceCount: 0,
@@ -178,7 +178,7 @@ function Contacts() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     // Special validation for tax number
-    if (name === 'taxNumber') {
+    if (name === 'tax_number') {
       const validation = validateTaxNumber(value);
       setErrors({
         ...errors,
@@ -198,9 +198,9 @@ function Contacts() {
       alert('You must be logged in to perform this action');
       return;
     }
-    
+    console.log(formData)
     // Validate tax number before submission
-    const taxValidation = validateTaxNumber(formData.taxNumber);
+    const taxValidation = validateTaxNumber(formData.tax_number);
     if (!taxValidation.isValid) {
       setErrors({
         ...errors,
@@ -391,9 +391,9 @@ function Contacts() {
                       >
                         <td>{contact.name}</td>
                         <td>{contact.company || '-'}</td>
-                        <td className="hide-mobile">{formatDate(contact.lastInteraction)}</td>
-                        <td className="hide-mobile">{contact.invoiceCount || 0}</td>
-                        <td className="hide-mobile">${(contact.totalValue || 0).toFixed(2)}</td>
+                        <td className="hide-mobile">{formatDate(contact.last_interaction)}</td>
+                        <td className="hide-mobile">{contact.invoice_count || 0}</td>
+                        <td className="hide-mobile">${(contact.total_value || 0).toFixed(2)}</td>
                         <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
                           <button 
                             className="action-btn edit-btn" 
@@ -477,7 +477,7 @@ function Contacts() {
                       <i className="fas fa-id-card"></i> Tax Number
                     </div>
                     <div className="info-value">
-                      {selectedContact.taxNumber || 'No tax number provided'}
+                      {selectedContact.tax_number || 'No tax number provided'}
                     </div>
                   </div>
                   
@@ -489,7 +489,7 @@ function Contacts() {
                         <i className="fas fa-calendar-alt"></i> Last Interaction
                       </div>
                       <div className="info-value">
-                        {formatDate(selectedContact.lastInteraction)}
+                        {formatDate(selectedContact.last_interaction)}
                       </div>
                     </div>
                     <div className="info-row">
@@ -625,7 +625,7 @@ function Contacts() {
                     type="date"
                     id="lastInteraction"
                     name="lastInteraction"
-                    value={formData.lastInteraction}
+                    value={formData.last_interaction}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -670,12 +670,12 @@ function Contacts() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="taxNumber">Tax Number</label>
+                <label htmlFor="tax_number">Tax Number</label>
                 <input
                   type="text"
-                  id="taxNumber"
-                  name="taxNumber"
-                  value={formData.taxNumber}
+                  id="tax_number"
+                  name="tax_number"
+                  value={formData.tax_number}
                   onChange={handleInputChange}
                   required
                   maxLength="9"

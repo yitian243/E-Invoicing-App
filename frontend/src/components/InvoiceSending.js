@@ -134,10 +134,9 @@ ${businessName}`;
           throw new Error(`Failed to fetch invoices: ${response}`);
         }
         
-        // Filter for validated invoices or pending invoices
+        // Filter for validated invoices
         const validInvoices = response.data.filter(inv => 
-          inv.validated || (inv.status && inv.status === 'pending')
-        );
+          inv.status && inv.status === 'validated');
         
         setInvoices(validInvoices);
         
@@ -275,7 +274,7 @@ ${businessName}`;
           ) : !sendingComplete ? (
             <form onSubmit={handleSubmit} className="sending-form">
               <div className="sending-step">
-                <h2>1. Select an Invoice to Send</h2>
+                <h2>1. Select a validated Invoice to Send</h2>
                 <div className="form-group">
                   <select 
                     value={selectedInvoiceId} 

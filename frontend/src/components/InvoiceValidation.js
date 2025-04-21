@@ -31,8 +31,11 @@ function InvoiceValidation() {
         if (typeof response === 'number') {
           throw new Error(`Failed to fetch invoices: ${response}`);
         }
+        // Filter for pending invoices
+        const validInvoices = response.data.filter(inv => 
+          inv.status && inv.status === 'pending');
         
-        setInvoices(response.data || []);
+        setInvoices(validInvoices);
       } catch (error) {
         console.error('Error fetching invoices:', error);
         setError('Failed to load invoices. Please try again.');
@@ -229,7 +232,7 @@ function InvoiceValidation() {
           ) : (
             <>
             <div className="validation-step">
-            <h2>1. Select an Invoice to Validate</h2>
+            <h2>1. Select a pending Invoice to Validate</h2>
             <div className="form-group">
               <select 
                 value={selectedInvoiceId} 
