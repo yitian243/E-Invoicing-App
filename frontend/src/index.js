@@ -1,15 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './styles/Dashboard.css'; // Dashboard styles
-import './styles/index.css';
-import './styles/InvoiceCreation.css'; // Invoice creation styles
-import './styles/InvoiceHistory.css'; // Invoice history styles
-import './styles/InvoiceSending.css'; // Invoice Sending styles
-import './styles/InvoiceUpload.css'; // Invoice Upload styles
-import './styles/InvoiceValidation.css'; // Invoice Validation styles
-import './styles/Login.css'; // Login page styles
 import reportWebVitals from './reportWebVitals';
+// Import common styles first
+import './styles/common.css';
+// Then import other styles
+import './styles/Business.css';
+import './styles/Contacts.css';
+import './styles/Dashboard.css';
+import './styles/index.css';
+import './styles/InvoiceCreation.css';
+import './styles/InvoiceHistory.css';
+import './styles/InvoiceSending.css';
+import './styles/InvoiceUpload.css';
+import './styles/InvoiceValidation.css';
+import './styles/Login.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

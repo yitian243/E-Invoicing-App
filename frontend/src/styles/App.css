@@ -1,10 +1,7 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Helvetica Neue', sans-serif;
-}
+/* Import common styles */
+@import './common.css';
 
+/* App-specific styles */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -36,13 +33,4 @@
   flex: 1;
   padding: 2rem;
   background: #f5f6fa;
-}
-
-.btn-primary {
-  background: #10316B;
-  color: white;
-  padding: 0.8rem 1.5rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
 }
