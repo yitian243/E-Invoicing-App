@@ -497,7 +497,7 @@ function Contacts() {
                         <i className="fas fa-file-invoice-dollar"></i> Invoices
                       </div>
                       <div className="info-value">
-                        {selectedContact.invoiceCount || 0}
+                        {selectedContact.invoice_count || 0}
                       </div>
                     </div>
                     <div className="info-row">
@@ -505,7 +505,7 @@ function Contacts() {
                         <i className="fas fa-money-bill-wave"></i> Total Value
                       </div>
                       <div className="info-value">
-                        ${(selectedContact.totalValue || 0).toFixed(2)}
+                        ${(selectedContact.total_value || 0).toFixed(2)}
                       </div>
                     </div>
                   </div>
