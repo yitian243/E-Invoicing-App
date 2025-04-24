@@ -1,29 +1,36 @@
 # Stage 1: Build
 FROM node:18-alpine AS builder
 WORKDIR /app
+
+# Copy package files and install dependencies
 COPY package.json package-lock.json tsconfig.json ./
-# COPY .env ./
-# Install all dependencies
 RUN npm ci
 
 # Copy source files
 COPY src ./src
-COPY *.ts ./
 
-# Build TypeScript (typecheck and convert .ts to .js)
+# Build TypeScript
 RUN npm run build
 
 # Stage 2: Runtime
-FROM node:18-alpine AS production
+FROM node:18-alpine
 WORKDIR /app
+
+# Copy package files and install ALL dependencies
+# This ensures all required packages are available
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
+
+# Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
-# COPY --from=builder /app/.env ./
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Environment
 EXPOSE 5000
 
-# Use shell form to expand env vars
+# Use entrypoint script to create .env file at runtime
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "dist/server.js"]
-# CMD ["npm", "start"]

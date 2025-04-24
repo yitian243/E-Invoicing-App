@@ -8,13 +8,16 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-    # Uncomment for .env variables
-    # env_file:
-    #   - ./backend/.env
-    # networks:
-    #   - app-network
-    # Uncomment if backend needs to restart on failure
-    # restart: unless-stopped
+      - BACKEND_PORT=5000
+      - BACKEND_URL=http://backend:5000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM=${RESEND_FROM}
+    networks:
+      - app-network
+    restart: unless-stopped
 
   frontend:
     build:
@@ -22,11 +25,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+    environment:
+      - BACKEND_URL=http://backend:5000
     depends_on:
       - backend
-    # networks:
-    #   - app-network
+    networks:
+      - app-network
+    restart: unless-stopped
 
-# networks:
-#   app-network:
-#     driver: bridge
+networks:
+  app-network:
+    driver: bridge

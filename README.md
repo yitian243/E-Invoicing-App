@@ -1,131 +1,160 @@
-# Business Process for SMEs Utilizing E-invoicing API
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=18452976&assignment_repo_type=AssignmentRepo)
-<br>
+# SmartInvoice Application
 
-# Running the Web Application
+A modern invoice management system built with React and Node.js.
 
-## Development Commands
+## Features
 
-### Starting Frontend Server
+- User authentication and authorization
+- Business profile management
+- Contact management
+- Invoice creation, validation, and sending
+- Email notifications via Resend API
+- Database storage with Supabase
 
-Execute the following command in the `./frontend/` directory:
+## Development Setup
 
-```bash
-npm start
-```
+### Prerequisites
 
-### Starting Backend Server
+- Node.js 18+
+- npm
+- Docker and Docker Compose (for containerized deployment)
+- Supabase account (for database)
 
-Execute the following command in the `./backend/` directory:
+### Local Development
 
-```bash
-npm start
-```
+1. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
 
-## Docker
+2. Install dependencies:
+   ```
+   # Install backend dependencies
+   cd backend
+   npm install
 
-### Creating Docker App in Root Directory
+   # Install frontend dependencies
+   cd ../frontend
+   npm install
+   ```
 
-```bash
-docker-compose up --build
-```
+3. Set up environment variables:
+   - Copy `.env.example` to `.env` and update the values with your Supabase credentials
 
-> **Note:** The current Dockerfile for the frontend uses **nginx** for production, but it can be changed to use `npm` with `react-scripts start` if refresh issues continue.
+4. Run database migrations:
+   ```
+   # Run migrations to set up the database schema
+   cd backend
+   npm run migrate
+   ```
 
-## API Endpoints
+5. Start the development servers:
+   ```
+   # Start backend server
+   cd backend
+   npm start
 
-This table details the available API endpoints for the application.
+   # In a new terminal, start frontend server
+   cd frontend
+   npm start
+   ```
 
-| HTTP Method | Endpoint Path                            | Description                                                            | Authorization      | Request Body / Params                                                                                                                               | Successful Response         |
-|-------------|------------------------------------------|------------------------------------------------------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|
-| **Auth Endpoints** |                                          |                                                                        |                    |                                                                                                                                     |                             |
-| POST        | `/api/auth/signup`                       | Registers a new user.                                                  | None               | JSON: `{ "email": string, "password": string, "name": string, "role": string (optional, defaults to 'user') }`                                      | JSON: User/token details    |
-| POST        | `/api/auth/login`                        | Logs in an existing user.                                              | None               | JSON: `{ "email": string, "password": string }`                                                                                                     | JSON: User/token details    |
-| POST        | `/api/auth/logout`                       | Logs out the currently authenticated user.                             | Bearer Token       | None                                                                                                                                                | JSON: `{ "success": true }` or empty body |
-| GET         | `/api/auth/validate-token`               | Validates the provided authentication token.                           | Bearer Token       | None                                                                                                                                                | JSON: Validation status/data|
-| **Business Endpoints** |                                          |                                                                        |                    |                                                                                                                                     |                             |
-| POST        | `/api/business`                          | Creates a new business profile.                                        | Bearer Token       | JSON: `{ "name": string, "tax_id": string, "address"?: string, "email"?: string, "default_currency"?: string, "password": string, "admin_id": string, "admin_name": string, "admin_email": string }` | JSON: Created business details |
-| GET         | `/api/business/:businessId`              | Retrieves details for a specific business by its ID.                   | Bearer Token       | Path Param: `businessId` (string)                                                                                                                    | JSON: Business details      |
-| GET         | `/api/business/user/:userId`             | Retrieves all businesses associated with a specific user ID.           | Bearer Token       | Path Param: `userId` (string)                                                                                                                      | JSON: Array of businesses |
-| PUT         | `/api/business/:businessId`              | Updates the details of an existing business.                           | Bearer Token       | Path Param: `businessId` (string), JSON Body: `{ "name": string, "tax_id": string, "address"?: string, "email"?: string, "default_currency"?: string, "password": string, "user_id": string }` | JSON: Updated business details |
-| POST        | `/api/business/join`                     | Allows a user to join an existing business using its name and password. | Bearer Token       | JSON: `{ "businessName": string, "password": string, "userId": string, "userName": string, "userEmail": string }`                                   | JSON: Join confirmation/details |
-| GET         | `/api/business/:businessId/members`      | Retrieves the list of members for a specific business.                 | Bearer Token       | Path Param: `businessId` (string)                                                                                                                    | JSON: Array of members    |
-| PUT         | `/api/business/:businessId/members/:memberId` | Updates the role of a specific member within a business. Requires admin privileges. | Bearer Token | Path Params: `businessId` (string), `memberId` (string), JSON Body: `{ "role": string, "user_id": string (ID of requesting user) }`                  | JSON: Update confirmation |
-| DELETE      | `/api/business/:businessId/members/:memberId` | Removes a member from a business. Requires admin privileges.          | Bearer Token | Path Params: `businessId` (string), `memberId` (string), JSON Body: `{ "user_id": string (ID of requesting user) }`                  | JSON: Deletion confirmation |
-| **Invoice Endpoints** |                                          |                                                                        |                    |                                                                                                                                     |                             |
-| POST        | `/api/invoice/create`                    | Creates a new invoice.                                                 | *(Likely Bearer Token)* | JSON: `{ "invoiceNumber": string, "client": string, "issueDate": string, "dueDate": string, "subtotal": number, "tax": number, "total": number, "status": string, "items": array, "notes"?: string, "terms"?: string }` | JSON: Created invoice details |
-| DELETE      | `/api/invoice/delete/:id`                | Deletes an invoice by its ID.                                          | *(Likely Bearer Token)* | Path Param: `id` (number)                                                                                                                            | 204 No Content              |
-| GET         | `/api/invoice/get`                       | Retrieves a list of all invoices.                                      | *(Likely Bearer Token)* | None                                                                                                                                                | JSON: Array of invoices   |
-| **Testing Endpoints** |                                          |                                                                        |                    |                                                                                                                                     |                             |
-| DELETE      | `/api/testing/clear-users`               | *Testing Only:* Resets the data store, clearing all users/data.      | None               | None                                                                                                                                                | JSON: `{ "success": true }` |
+6. Access the application:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
 
-**Notes:**
+## Production Deployment
 
-* **Authorization:** Endpoints requiring authentication expect a standard `Authorization: Bearer <token>` header. Invoice endpoints are marked as *likely* requiring auth; verify implementation with Ollie.
-* `?` indicates optional fields in the request body.
-* `:paramName` indicates a URL path parameter.
+### Using Docker Compose
 
-## File Heirarchy Visualisation:
-```
-CAPSTONE-PROJECT-2025-T1-ZST1-3900-F13B-BANANA
-├── backend
-│   ├── node_modules
-│   ├── src
-│   │   ├── auth.test.ts
-│   │   ├── auth.ts
-│   │   ├── authWrapper.ts
-│   │   ├── business.test.ts
-│   │   ├── business.ts
-│   │   ├── businessWrapper.ts
-│   │   ├── config.ts
-│   │   ├── dataStore.ts
-│   │   ├── db.ts
-│   │   ├── invoice.test.ts
-│   │   ├── invoice.ts
-│   │   ├── invoiceWrapper.ts
-│   │   ├── jest.config.js
-│   │   ├── server.ts
-│   │   └── types.ts
-│   ├── database.json
-│   ├── Dockerfile
-│   ├── package-lock.json
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend
-│   ├── node_modules
-│   ├── public
-│   ├── src
-│   │   ├── components
-│   │   │   ├── AuthContext.js
-│   │   │   ├── Business.js
-│   │   │   ├── config.js
-│   │   │   ├── Contacts.js
-│   │   │   ├── Dashboard.js
-│   │   │   ├── InvoiceCreation.js
-│   │   │   ├── InvoiceHistory.js
-│   │   │   ├── InvoiceSending.js
-│   │   │   ├── InvoiceUpload.js
-│   │   │   ├── InvoiceValidation.js
-│   │   │   ├── Login.js
-│   │   │   ├── Profile.js
-│   │   │   ├── ProtectedRoute.js
-│   │   │   ├── Sidebar.js
-│   │   │   └── Signup.js
-│   │   ├── styles/
-│   │   ├── App.js
-│   │   ├── App.test.js
-│   │   ├── index.js
-│   │   ├── logo.svg
-│   │   ├── reportWebVitals.js
-│   │   └── setupTests.js
-│   ├── Dockerfile
-│   ├── package-lock.json
-│   └── package.json
-├── Dockerfile
-├── package-lock.json
-├── package.json
-├── .env.example
-├── .gitignore
-├── docker-compose.yml
-└── README.md
-```
+1. Make sure Docker and Docker Compose are installed on your system
+
+2. Set up environment variables:
+   - Copy `.env.example` to `.env` and update the values with your production credentials
+   - The following environment variables are required:
+     ```
+     SUPABASE_URL=your_supabase_url
+     SUPABASE_KEY=your_supabase_key
+     SUPABASE_SERVICE_KEY=your_supabase_service_key
+     RESEND_API_KEY=your_resend_api_key
+     RESEND_FROM=your_email@example.com
+     ```
+
+3. Build and start the containers:
+   ```
+   docker-compose up -d --build
+   ```
+
+4. Access the application:
+   - Frontend: http://localhost (port 80)
+   - Backend API: http://localhost:5000
+
+### Deployment to a Cloud Provider
+
+1. Set up your cloud provider (AWS, Azure, GCP, etc.)
+
+2. Configure environment variables in your cloud provider's dashboard
+
+3. Build the Docker images:
+   ```
+   docker-compose build
+   ```
+
+4. Push the images to a container registry (Docker Hub, ECR, etc.)
+
+5. Deploy the containers to your cloud provider using their respective services:
+   - AWS: ECS, EKS, or Elastic Beanstalk
+   - Azure: AKS or App Service
+   - GCP: GKE or Cloud Run
+
+## Environment Variables
+
+The following environment variables are required:
+
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_KEY`: Your Supabase public key
+- `SUPABASE_SERVICE_KEY`: Your Supabase service key
+- `RESEND_API_KEY`: Your Resend API key
+- `RESEND_FROM`: Email address to send from
+
+## Project Structure
+
+- `/backend`: Node.js Express server
+  - `/src`: TypeScript source files
+  - `/dist`: Compiled JavaScript files (generated)
+
+- `/frontend`: React application
+  - `/public`: Static files
+  - `/src`: React components and logic
+  - `/build`: Production build (generated)
+
+## Docker Configuration
+
+- `docker-compose.yml`: Defines the services, networks, and volumes
+- `backend/Dockerfile`: Multi-stage build for the backend
+- `frontend/Dockerfile`: Multi-stage build for the frontend
+- `frontend/nginx.conf`: Nginx configuration for serving the frontend
+- `backend/docker-entrypoint.sh`: Script to set up environment variables for the backend
+- `frontend/docker-entrypoint.sh`: Script to set up environment variables for the frontend
+
+## API Documentation
+
+The backend API provides the following endpoints:
+
+- Authentication: `/api/auth/*`
+- Business: `/api/business/*`
+- Contacts: `/api/contact/*`
+- Invoices: `/api/invoice/*`
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature-name`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
