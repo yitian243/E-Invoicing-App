@@ -358,6 +358,27 @@ function InvoiceHistory() {
                                 </span>
                               )}
                               
+                              {/* Add the new Validate/Send action */}
+                              {invoice.status === 'pending' && (
+                                <Link 
+                                  to={`/invoicevalidation?invoiceId=${invoice.id}`}
+                                  className="dropdown-item"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <i className="fas fa-check-circle"></i> Validate Invoice
+                                </Link>
+                              )}
+                              
+                              {invoice.status === 'validated' && (
+                                <Link 
+                                  to={`/invoicesending?invoiceId=${invoice.id}`}
+                                  className="dropdown-item"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <i className="fas fa-paper-plane"></i> Send Invoice
+                                </Link>
+                              )}
+
                               <button
                                 className="dropdown-item"
                                 onClick={(e) => {

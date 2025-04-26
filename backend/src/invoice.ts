@@ -1,5 +1,18 @@
 import { Request, Response, Router } from 'express';
 import { supabaseAdmin, supabase } from './db';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 // Initialize router
 const router = Router();
@@ -796,172 +809,123 @@ function validateRequiredFields(invoice: any, items: any[]) {
 }
 
 /**
- * Route to send an invoice via email
- * @route POST /api/invoice/:id/send
+ * Route to send an invoice
+ * @route POST /api/invoice/send
  */
-router.post('/:id/send', async (req: Request, res: Response): Promise<void> => {
+router.post('/send', async (req: Request, res: Response): Promise<void> => {
   try {
-    const invoiceId = req.params.id;
     const {
+      invoiceId,
       method,
       recipients,
       cc,
       bcc,
       subject,
       message,
-      includeAttachment,
-      includePaymentLink,
-      scheduleTime,
-      autoReminders,
-      reminderDays
+      includePdfAttachment,
+      includeXmlAttachment,
     } = req.body;
-    
-    // Get user_id from auth token
+
+    // Auth check (unchanged)
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
-    
+
     const token = authHeader.replace('Bearer ', '');
-    
-    // Get user from token
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (userError || !userData.user) {
       res.status(401).json({ error: 'Invalid token' });
       return;
     }
-    
-    // Get invoice details
-    const { data: invoice, error } = await supabaseAdmin
+
+    // Get invoice (unchanged)
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .schema('billing')
       .from('invoices')
       .select('*')
       .eq('id', invoiceId)
       .single();
-    
-    if (error || !invoice) {
+
+    if (invoiceError || !invoice) {
       res.status(404).json({ error: 'Invoice not found' });
       return;
     }
-    
-    // Check if the invoice is validated
-    if (!invoice.validated) {
+
+    if (invoice.status !== 'validated') {
       res.status(400).json({ error: 'Invoice must be validated before sending' });
       return;
     }
-    
-    // Handle different sending methods
+
     if (method === 'email') {
-      // Send email using Resend API
-      const { Resend } = require('resend');
-      
-      try {
-        // Initialize Resend with API key
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        console.log('Resend API initialized');
-        
-        // Get business name for the email
-        const { data: businessData, error: businessError } = await supabaseAdmin
-          .schema('business')
-          .from('businesses')
-          .select('name')
-          .eq('id', invoice.business_id)
-          .single();
-        
-        if (businessError) {
-          console.error('Error fetching business name:', businessError);
-        }
-        
-        const businessName = businessData?.name || 'SmartInvoice';
-        
-        // Prepare email data
-        const emailData = {
-          from: `${businessName} <${process.env.RESEND_FROM}>`,
-          to: recipients,
-          subject: subject,
-          html: message.replace(/\n/g, '<br>'),
-          cc: cc ? cc.split(',') : undefined,
-          bcc: bcc ? bcc.split(',') : undefined,
-        };
-        
-        // Add debugging
-        console.log('Email configuration:', {
-          from: process.env.RESEND_FROM,
-          to: recipients,
-          subject: subject,
-          cc: cc ? cc.split(',') : undefined,
-          bcc: bcc ? bcc.split(',') : undefined,
-          includeAttachment: includeAttachment,
-          hasPdfContent: !!invoice.pdf_content
+      // Get business name (unchanged)
+      const { data: businessData } = await supabaseAdmin
+        .schema('business')
+        .from('businesses')
+        .select('name')
+        .eq('id', invoice.business_id)
+        .single();
+
+      const businessName = businessData?.name || 'SmartInvoice';
+
+      // Prepare email
+      const mailOptions = {
+        from: `"${businessName}" <${process.env.GMAIL_USER}>`,
+        to: recipients,
+        subject: subject,
+        html: message.replace(/\n/g, '<br>'),
+        cc: cc || undefined,
+        bcc: bcc || undefined,
+        attachments: [] as any[],
+      };
+
+      // Attach PDF if requested
+      if (includePdfAttachment && invoice.pdf_content) {
+        mailOptions.attachments.push({
+          filename: `invoice-${invoice.invoice_number}.pdf`,
+          content: invoice.pdf_content,
+          encoding: 'base64',
         });
-        
-        // Add PDF attachment if requested
-        const emailDataWithAttachments: any = { ...emailData };
-        if (includeAttachment && invoice.pdf_content) {
-          emailDataWithAttachments.attachments = [
-            {
-              filename: `invoice-${invoice.invoice_number}.pdf`,
-              content: Buffer.from(invoice.pdf_content, 'base64')
-            }
-          ];
-        }
-        
-        // Send the email
-        console.log('Sending email with Resend API...');
-        const { data, error: sendError } = await resend.emails.send(emailDataWithAttachments);
-        console.log('Resend API response:', { data, error: sendError });
-        
-        if (sendError) {
-          throw new Error(`Resend API error: ${sendError.message}`);
-        }
-        
-        // Log email info
-        console.log('Email sent successfully:', data);
-        
-        // Update invoice status in database
-        await supabaseAdmin
-          .schema('billing')
-          .from('invoices')
-          .update({
-            status: 'sent',
-            sent_date: new Date().toISOString(),
-            sent_method: method,
-            sent_to: recipients
-          })
-          .eq('id', invoiceId);
-        
-        res.status(200).json({
-          success: true,
-          message: 'Invoice sent successfully',
-          emailInfo: data
-        });
-      } catch (emailError) {
-        console.error('Error sending email:', emailError);
-        res.status(500).json({ error: 'Failed to send email', details: emailError.message });
-        return;
       }
-      
+
+      // Attach XML if requested
+      if (includeXmlAttachment && invoice.xml_content) {
+        mailOptions.attachments.push({
+          filename: `invoice-${invoice.invoice_number}.xml`,
+          content: invoice.xml_content,
+        });
+      }
+
+      // Send email
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Email sent:', info.messageId);
+
+      // Update invoice status
+      await supabaseAdmin
+        .schema('billing')
+        .from('invoices')
+        .update({ status: 'sent' })
+        .eq('id', invoiceId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Email sent successfully',
+        messageId: info.messageId,
+      });
+
     } else if (method === 'sftp') {
-      // SFTP sending would be implemented here
-      res.status(200).json({
-        success: true,
-        message: 'Invoice sent via SFTP (simulated)'
-      });
+      res.status(200).json({ success: true, message: 'SFTP simulated' });
     } else if (method === 'portal') {
-      // Portal sending would be implemented here
-      res.status(200).json({
-        success: true,
-        message: 'Invoice published to client portal (simulated)'
-      });
+      res.status(200).json({ success: true, message: 'Portal simulated' });
     } else {
-      res.status(400).json({ error: 'Invalid sending method' });
+      res.status(400).json({ error: 'Invalid method' });
     }
-    
+
   } catch (error) {
-    console.error('Error sending invoice:', error);
-    res.status(500).json({ error: 'Failed to send invoice' });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to send', details: error.message });
   }
 });
 

@@ -26,11 +26,12 @@ function InvoiceSending() {
     emailBcc: '',
     emailSubject: '',
     emailMessage: '',
-    includeAttachment: true,
+    includePdfAttachment: true,
     includePaymentLink: true,
     scheduleTime: '',
     autoReminders: false,
-    reminderDays: 3
+    reminderDays: 3,
+    includeXmlAttachment: true
   });
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -206,29 +207,33 @@ ${businessName}`;
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedInvoice) return;
-    
+    console.log(selectedInvoice)
+    console.log(selectedInvoiceId)
     setSending(true);
-    
+
+
     try {
       // Call backend API to send invoice email
-      const response = await fetch(`${BACKEND_URL}/api/invoice/${selectedInvoice.id}/send`, {
+      const response = await fetch(`${BACKEND_URL}/api/invoice/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          invoiceId: selectedInvoice.id, // Include invoiceId in the body
           method: sendingOptions.method,
           recipients: sendingOptions.emailRecipients,
           cc: sendingOptions.emailCc,
           bcc: sendingOptions.emailBcc,
           subject: sendingOptions.emailSubject,
           message: sendingOptions.emailMessage,
-          includeAttachment: sendingOptions.includeAttachment,
+          includePdfAttachment: sendingOptions.includePdfAttachment,
           includePaymentLink: sendingOptions.includePaymentLink,
           scheduleTime: sendingOptions.scheduleTime,
           autoReminders: sendingOptions.autoReminders,
-          reminderDays: sendingOptions.reminderDays
+          reminderDays: sendingOptions.reminderDays,
+          includeXmlAttachment: sendingOptions.includeXmlAttachment
         })
       });
       
@@ -544,14 +549,25 @@ ${businessName}`;
                           <div className="form-group checkbox-group">
                             <input
                               type="checkbox"
-                              id="includeAttachment"
-                              name="includeAttachment"
-                              checked={sendingOptions.includeAttachment}
+                              id="includePdfAttachment"
+                              name="includePdfAttachment"
+                              checked={sendingOptions.includePdfAttachment}
                               onChange={handleInputChange}
                             />
-                            <label htmlFor="includeAttachment">Attach invoice PDF</label>
+                            <label htmlFor="includePdfAttachment">Attach invoice PDF</label>
                           </div>
                           
+                          <div className="form-group checkbox-group">
+                            <input
+                              type="checkbox"
+                              id="includeXmlAttachment"
+                              name="includeXmlAttachment"
+                              checked={sendingOptions.includeXmlAttachment}
+                              onChange={handleInputChange}
+                            />
+                            <label htmlFor="includeXmlAttachment">Attach invoice XML</label>
+                          </div>
+
                           <div className="form-group checkbox-group">
                             <input
                               type="checkbox"

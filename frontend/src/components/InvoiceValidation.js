@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getInvoicesRequest } from '../invoiceWrapper';
 import '../styles/InvoiceValidation.css';
 import { useAuth } from './AuthContext';
@@ -15,6 +15,7 @@ function InvoiceValidation() {
   const [validationResults, setValidationResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
+  const location = useLocation(); 
 
   // Load invoices from backend API
   useEffect(() => {
@@ -36,6 +37,19 @@ function InvoiceValidation() {
           inv.status && inv.status === 'pending');
         
         setInvoices(validInvoices);
+        // Only try to auto-select if there's an invoiceId in URL
+        const queryParams = new URLSearchParams(location.search);
+        const invoiceIdFromUrl = queryParams.get('invoiceId');
+        
+        if (invoiceIdFromUrl && validInvoices.length > 0) {
+          const invoiceToSelect = validInvoices.find(inv => inv.id === invoiceIdFromUrl);
+          
+          if (invoiceToSelect) {
+            setSelectedInvoiceId(invoiceIdFromUrl);
+            setSelectedInvoice(invoiceToSelect);
+          }
+          // No else case needed - just proceed without selection if not found
+        }
       } catch (error) {
         console.error('Error fetching invoices:', error);
         setError('Failed to load invoices. Please try again.');
@@ -339,7 +353,7 @@ function InvoiceValidation() {
                       <div className="next-steps">
                         <p>Your invoice is validated and ready to be sent.</p>
                         <div className="action-buttons">
-                          <Link to={`/invoice-sending?invoiceId=${selectedInvoice.id}`} className="btn-primary">
+                          <Link to={`/invoicesending?invoiceId=${selectedInvoice.id}`} className="btn-primary">
                             <i className="fas fa-paper-plane"></i> Proceed to Sending
                           </Link>
                           <Link to="/invoicehistory" className="btn-secondary">
