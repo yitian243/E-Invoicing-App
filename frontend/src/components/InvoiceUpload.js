@@ -1,9 +1,15 @@
-import React, { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useRef, useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import '../styles/InvoiceUpload.css';
 import Sidebar from './Sidebar';
+import Papa from 'papaparse';
+import { useAuth } from './AuthContext';
+import { createInvoiceRequest, getContactsForInvoiceRequest } from '../invoiceWrapper';
+
 
 function InvoiceUpload() {
+  const navigate = useNavigate();
+  const [clientId, setClientId] = useState(null);
   const [files, setFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
@@ -12,6 +18,57 @@ function InvoiceUpload() {
   const [processingFile, setProcessingFile] = useState(false);
   const [processedData, setProcessedData] = useState(null);
   const fileInputRef = useRef(null);
+  const { token, currentUser } = useAuth();
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  
+  
+  useEffect(() => {
+
+    const fetchClients = async () => {
+      try {
+        console.log('Fetching clients with token:', token);
+        const response = await getContactsForInvoiceRequest(token);
+        console.log('Response from getContactsForInvoiceRequest:', response);
+        
+        if (typeof response === 'number') {
+          throw new Error(`Failed to fetch clients: ${response}`);
+        }
+
+        if (!response.data) {
+          throw new Error('No data returned from server');
+        }
+
+        // Filter to only show contacts of type 'client'
+        const clientContacts = response.data.filter(contact => contact.type === 'client');
+        console.log('Filtered client contacts:', clientContacts);
+        setClients(clientContacts);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+      }
+    };
+    fetchClients();
+  }, [token, currentUser]);
+
+  // Format date as YYYY-MM-DD for input fields
+  function formatDate(date) {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  }
+
+
+  // Handle form input changes
+  const handleChange = (e) => {
+    setClientId(e.target.value);
+  };
 
   // Handle file selection from the input
   const handleFileChange = (e) => {
@@ -116,7 +173,6 @@ function InvoiceUpload() {
       return f;
     }));
     
-    // Simulate processing time
     setTimeout(() => {
       // Update file status to processed
       setFiles(prevFiles => prevFiles.map(f => {
@@ -125,61 +181,51 @@ function InvoiceUpload() {
         }
         return f;
       }));
+      if (selectedFile.type === 'spreadsheet' && selectedFile.file.name.endsWith('.csv')) {
+        console.log("here works4")
+        Papa.parse(selectedFile.file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: ({ data }) => {
+            const row = data[0];                 // header‑level fields
+            const items = Object.entries(row)
+              .filter(([k]) => k.startsWith('itemDescription'))
+              .map(([k, v]) => {
+                const idx = k.replace('itemDescription', '');
+                return {
+                  description : v,
+                  quantity    : +row[`itemQuantity${idx}`]  || 0,
+                  unitPrice   : +row[`itemUnitPrice${idx}`] || 0,
+                  taxRate     : +row[`itemTaxRate${idx}`]   || 0
+                };
+              })
+              .filter(i => i.description);
       
-      // Generate fake extracted data based on file type
-      let extractedData = {};
+            const subtotal = items.reduce((s,i)=>s+i.quantity*i.unitPrice, 0);
+            const tax      = items.reduce((s,i)=>s+i.quantity*i.unitPrice*(i.taxRate/100), 0);
+            const total    = subtotal + tax;
+            const issueDate = formatDate(row.issueDate)
+            const dueDate = formatDate(row.dueDate)
+
+            const extractedData = {
+              issueDate,
+              dueDate,
+              subtotal, tax, total,
+              status        : "pending",
+              notes         : row.notes,
+              terms         : row.terms,
+              items
+            };
       
-      if (selectedFile.type === 'pdf' || selectedFile.type === 'image') {
-        extractedData = {
-          invoiceNumber: 'INV-' + Math.floor(1000 + Math.random() * 9000),
-          client: 'ABC Corporation',
-          issueDate: new Date().toISOString().split('T')[0],
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          total: Math.floor(100 + Math.random() * 9900) / 100,
-          items: [
-            {
-              description: 'Professional Services',
-              quantity: 1,
-              unitPrice: Math.floor(100 + Math.random() * 9900) / 100,
-              taxRate: 10
-            }
-          ]
-        };
-      } else if (selectedFile.type === 'spreadsheet') {
-        extractedData = {
-          invoiceNumber: 'INV-' + Math.floor(1000 + Math.random() * 9000),
-          client: 'XYZ Industries',
-          issueDate: new Date().toISOString().split('T')[0],
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          total: Math.floor(100 + Math.random() * 9900) / 100,
-          items: [
-            {
-              description: 'Product A',
-              quantity: Math.floor(1 + Math.random() * 10),
-              unitPrice: Math.floor(10 + Math.random() * 990) / 100,
-              taxRate: 8
-            },
-            {
-              description: 'Product B',
-              quantity: Math.floor(1 + Math.random() * 5),
-              unitPrice: Math.floor(10 + Math.random() * 990) / 100,
-              taxRate: 8
-            }
-          ]
-        };
-      } else {
-        extractedData = {
-          invoiceNumber: 'INV-' + Math.floor(1000 + Math.random() * 9000),
-          client: 'Unknown Client',
-          issueDate: new Date().toISOString().split('T')[0],
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          total: 0,
-          items: []
-        };
+            setProcessedData(extractedData);
+            setProcessingFile(false);
+            setFiles(prev => prev.map(f =>
+              f.id === fileId ? { ...f, status: 'processed' } : f));
+          },
+          error: () => alert('Could not read CSV - please check the format.')
+        });
+        return;
       }
-      
-      setProcessedData(extractedData);
-      setProcessingFile(false);
     }, 2000);
   };
 
@@ -193,37 +239,84 @@ function InvoiceUpload() {
     }
   };
 
-  // Create invoice from processed data
-  const handleCreateInvoice = () => {
+  const handleCreateInvoice = async () => {
     if (!processedData) return;
-    
-    // Get existing invoices
-    const existingInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    
-    // Create a new invoice with extracted data
-    const newInvoice = {
-      id: Date.now().toString(),
-      invoiceNumber: processedData.invoiceNumber,
-      client: processedData.client,
-      issueDate: processedData.issueDate,
-      dueDate: processedData.dueDate,
-      total: processedData.total,
-      status: 'pending',
-      items: processedData.items,
-      source: 'uploaded',
-      uploadDate: new Date().toISOString()
-    };
-    
-    // Add to invoices in localStorage
-    const updatedInvoices = [newInvoice, ...existingInvoices];
-    localStorage.setItem('invoices', JSON.stringify(updatedInvoices));
-    
-    // Show success message
-    alert('Invoice created successfully from uploaded file!');
-    
-    // Reset the form
-    setFiles([]);
-    setProcessedData(null);
+    setLoading(true)
+    try {
+
+      console.log('Form submitted with clientId:', clientId);
+      console.log('Available clients:', clients);
+
+      if (!clientId) {
+        setLoading(false)
+        return;
+      }
+      // Get client name for the invoice record
+      const selectedClient = clients.find(client => client.id.toString() === clientId.toString());
+      console.log(selectedClient)
+      if (!selectedClient) {
+        setLoading(false)
+        console.error('Selected client not found:', clientId);
+        return;
+      }
+      
+      console.log('Selected client:', selectedClient);
+
+      const cId = selectedClient.id;
+      const clientName = selectedClient.name || 'Unknown Client';
+      const clientCity = selectedClient.city || '';
+      const clientStreet = selectedClient.street || '';
+      const clientPostCode = selectedClient.postcode || '';
+      const clientEmail = selectedClient.email || '';
+      const clientTaxNumber = selectedClient.tax_number || ''; // Note: using tax_number from the database
+
+      const updatedData = {
+        ...processedData,
+        contactId: cId,
+        clientName: clientName,
+        clientCity: clientCity,
+        clientStreet: clientStreet,
+        clientPostCode: clientPostCode,
+        clientEmail: clientEmail,
+        clientTaxNumber: clientTaxNumber,
+      };
+      
+      setProcessedData(updatedData);
+      // const res = await createInvoiceRequest(token, invoiceRecord);
+      const res = await fetch('http://localhost:5000/api/invoice/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedData),
+      });
+      // const res = await fetch('http://localhost:5000/api/invoice/create', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body  : JSON.stringify(processedData),   // send the object you parsed
+      // });
+
+      if (!res.ok) {
+        throw new Error('Server responded ${res.status}');
+      }
+
+      const { data } = await res.json();   // your backend returns { success, data }
+      console.log(data)
+      alert(`Invoice ${data.invoice_number} saved successfully!`);
+
+      // reset UI
+      setFiles([]);
+      setProcessedData(null);
+
+      // Redirect to invoice history page
+      navigate('/invoicehistory');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create invoice – see console for details.');
+    } finally {
+      setLoading(false)
+    }
   };
 
   // Handle drag events
@@ -312,22 +405,40 @@ function InvoiceUpload() {
                 <i className="fas fa-edit"></i> Manual Entry
               </button>
             </div>
-            
+              
             <div className="option-description">
               {selectedInvoiceType === 'automatic' ? (
                 <p>
-                  Upload an invoice and we'll automatically extract the information. 
+                  Choose a client and then upload an invoice and we'll automatically extract the information. 
                   Supported formats: PDF, Images (JPG, PNG), Excel, CSV, XML.
                 </p>
               ) : (
                 <p>
-                  Upload an invoice as a reference and manually enter the information.
+                  Choose a client and then upload an invoice as a reference and manually enter the information.
                   Perfect for complex invoices or when automatic extraction doesn't work.
                 </p>
               )}
             </div>
           </div>
           
+          <div className="form-group">
+            <label htmlFor="clientId">Client</label>
+            <select
+              id="clientId"
+              name="clientId"
+              value={clientId}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select a client</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="upload-area-container">
             <div 
               className={`upload-area ${dragActive ? 'drag-active' : ''}`}
@@ -471,8 +582,8 @@ function InvoiceUpload() {
                         </tr>
                       </thead>
                       <tbody>
-                        {processedData.items.map((item, index) => (
-                          <tr key={index}>
+                        {processedData.items.map((item, idx) => (
+                          <tr key={idx}>
                             <td>{item.description}</td>
                             <td>{item.quantity}</td>
                             <td>${item.unitPrice.toFixed(2)}</td>
@@ -500,6 +611,14 @@ function InvoiceUpload() {
             </div>
           )}
         </div>
+        {loading && (
+          <div className="loading-overlay">
+            <div className="loading-content">
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p>Creating your invoice...</p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
