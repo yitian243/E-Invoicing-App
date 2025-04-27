@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import '../styles/Profile.css';
 import Sidebar from './Sidebar';
 import { BACKEND_URL } from './config';
+import ChangePasswordModal from './ChangePasswordModal';
 
 function Profile() {
   const { currentUser, token } = useAuth();
@@ -21,6 +22,7 @@ function Profile() {
   const [businessLoading, setBusinessLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Load user data on component mount
   useEffect(() => {
@@ -255,6 +257,14 @@ function Profile() {
     }
   };
 
+  const openPasswordModal = () => {
+    setShowPasswordModal(true);
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+  };
+
   return (
     <div className="dashboard-container">
       <Sidebar />
@@ -461,7 +471,7 @@ function Profile() {
           <div className="profile-security">
             <h3>Security Settings</h3>
             <div className="security-options">
-              <button className="btn-outline">
+              <button className="btn-outline" onClick={openPasswordModal}>
                 <i className="fas fa-lock"></i> Change Password
               </button>
               <button className="btn-outline">
@@ -471,6 +481,11 @@ function Profile() {
           </div>
         </div>
       </main>
+      
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <ChangePasswordModal onClose={closePasswordModal} />
+      )}
     </div>
   );
 }

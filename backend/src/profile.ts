@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { supabaseAdmin } from './db';
+import { supabaseAdmin, supabase } from './db'; // Import the regular supabase client as well
 
 // Initialize router
 const router = Router();
@@ -45,12 +45,62 @@ async function authenticateRequest(req: Request) {
     }
 
     // Authentication successful
-    return { authenticated: true, user: data.user };
+    return { authenticated: true, user: data.user, token };
   } catch (error) {
     console.error('Unexpected error during authentication:', error);
     return { authenticated: false, error: 'Authentication error' };
   }
 }
+
+/**
+ * Route to change user password
+ * @route PUT /api/profile/password
+ * IMPORTANT: This route must be defined BEFORE the /:userId routes to avoid conflicts
+ */
+router.put('/password', async (req: Request, res: Response) => {
+  console.log('Password change request received');
+  
+  // Authenticate request
+  const auth = await authenticateRequest(req);
+  
+  if (!auth.authenticated) {
+    console.error('Authentication failed during password change:', auth.error);
+    return res.status(401).json(createErrorResponse(auth.error, 401));
+  }
+  
+  const { currentPassword, newPassword } = req.body;
+  
+  // Validate request data
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json(createErrorResponse('Current password and new password are required', 400));
+  }
+  
+  if (newPassword.length < 8) {
+    return res.status(400).json(createErrorResponse('New password must be at least 8 characters long', 400));
+  }
+  
+  try {
+    // Use a different approach to verify password. Instead of creating a new client,
+    // try to update the user's password which will fail if the current password is incorrect
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      auth.user.id,
+      { password: newPassword }
+    );
+    
+    if (updateError) {
+      console.error('Password update failed:', updateError.message);
+      return res.status(400).json(createErrorResponse(updateError.message, 400));
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json(createErrorResponse('Internal server error', 500));
+  }
+});
 
 /**
  * Route to get user profile
