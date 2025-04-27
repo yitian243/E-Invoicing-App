@@ -32,9 +32,9 @@ function InvoiceValidation() {
         if (typeof response === 'number') {
           throw new Error(`Failed to fetch invoices: ${response}`);
         }
-        // Filter for pending invoices
+        // Filter for draft invoices
         const validInvoices = response.data.filter(inv => 
-          inv.status && inv.status === 'pending');
+          inv.status && inv.status === 'draft');
         
         setInvoices(validInvoices);
         // Only try to auto-select if there's an invoiceId in URL
