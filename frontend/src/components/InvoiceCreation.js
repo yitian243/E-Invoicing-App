@@ -199,8 +199,6 @@ function InvoiceCreation() {
       const invoiceRecord = {
         contactId: clientId,
         clientName: clientName,
-        contactId: clientId,
-        clientName: clientName,
         clientCity: clientCity,
         clientStreet: clientStreet,
         clientPostCode: clientPostCode,
@@ -487,26 +485,11 @@ function InvoiceCreation() {
                 ) : (
                   'Create Invoice'
                 )}
-                {loading ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i> Creating Invoice...
-                  </>
-                ) : (
-                  'Create Invoice'
-                )}
               </button>
             </div>
           </form>
           )}
         </div>
-        {loading && (
-          <div className="loading-overlay">
-            <div className="loading-content">
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p>Creating your invoice...</p>
-            </div>
-          </div>
-        )}
         {loading && (
           <div className="loading-overlay">
             <div className="loading-content">

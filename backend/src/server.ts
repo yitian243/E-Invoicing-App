@@ -5,6 +5,9 @@ import businessRoutes from './business';
 import { BACKEND_PORT } from './config';
 import contactRoutes from './contact';
 import invoiceRoutes from './invoice';
+import profileRoutes from './profile';
+import invoiceSummaryRoutes from './invoice-summary';
+
 
 // Initialise app
 const app = express();
@@ -16,6 +19,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/invoice', invoiceRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/invoice-summary', invoiceSummaryRoutes);
 
 // Testing Endpoint
 app.delete('/api/testing/clear-users', (req: Request, res: Response) => {

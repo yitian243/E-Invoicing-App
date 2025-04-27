@@ -1,379 +1,221 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import '../styles/InvoiceUpload.css';
-import Sidebar from './Sidebar';
 import Papa from 'papaparse';
+import Sidebar from './Sidebar';
 import { useAuth } from './AuthContext';
-import { createInvoiceRequest, getContactsForInvoiceRequest } from '../invoiceWrapper';
-
+import '../styles/InvoiceUpload.css';
 
 function InvoiceUpload() {
   const navigate = useNavigate();
-  const [clientId, setClientId] = useState(null);
+  const [clientId, setClientId] = useState('');
+  const [clients, setClients] = useState([]);
   const [files, setFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const [selectedInvoiceType, setSelectedInvoiceType] = useState('automatic');
-  // eslint-disable-next-line
-  const [processingFile, setProcessingFile] = useState(false);
   const [processedData, setProcessedData] = useState(null);
-  const fileInputRef = useRef(null);
-  const { token, currentUser } = useAuth();
-  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  
-  
-  useEffect(() => {
+  const fileInputRef = useRef(null);
+  const { token } = useAuth();
 
+  // Fetch clients when component mounts
+  useEffect(() => {
     const fetchClients = async () => {
       try {
-        console.log('Fetching clients with token:', token);
-        const response = await getContactsForInvoiceRequest(token);
-        console.log('Response from getContactsForInvoiceRequest:', response);
+        const response = await fetch('http://localhost:5000/api/contact/getContacts', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        if (typeof response === 'number') {
-          throw new Error(`Failed to fetch clients: ${response}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch contacts');
         }
-
-        if (!response.data) {
-          throw new Error('No data returned from server');
-        }
-
+  
+        const { data } = await response.json();
         // Filter to only show contacts of type 'client'
-        const clientContacts = response.data.filter(contact => contact.type === 'client');
-        console.log('Filtered client contacts:', clientContacts);
+        const clientContacts = data.filter(contact => contact.type === 'client');
         setClients(clientContacts);
       } catch (error) {
         console.error('Error fetching clients:', error);
       }
     };
+  
     fetchClients();
-  }, [token, currentUser]);
+  }, [token]);
 
-  // Format date as YYYY-MM-DD for input fields
-  function formatDate(date) {
-    const d = new Date(date);
-    let month = '' + (d.getMonth() + 1);
-    let day = '' + d.getDate();
-    const year = d.getFullYear();
-
-    if (month.length < 2) month = '0' + month;
-    if (day.length < 2) day = '0' + day;
-
-    return [year, month, day].join('-');
-  }
-
-
-  // Handle form input changes
-  const handleChange = (e) => {
+  // Handle client selection
+  const handleClientChange = (e) => {
     setClientId(e.target.value);
+    // Reset files and processed data when client changes
+    setFiles([]);
+    setProcessedData(null);
   };
 
-  // Handle file selection from the input
-  const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    handleFiles(selectedFiles);
-  };
+  // Handle file upload
+  const handleFileUpload = (uploadedFiles) => {
+    const newFiles = uploadedFiles.map(file => ({
+      id: Date.now() + Math.random().toString(36).substring(2),
+      file,
+      name: file.name,
+      type: getFileType(file),
+      status: 'pending'
+    }));
 
-  // Process the files that were selected or dropped
-  const handleFiles = (selectedFiles) => {
-    const newFiles = [...files];
-    
-    // Create file objects with additional metadata
-    selectedFiles.forEach(file => {
-      // Check if file is already in the list
-      if (!files.some(f => f.name === file.name && f.size === file.size)) {
-        newFiles.push({
-          file,
-          id: Date.now() + Math.random().toString(36).substring(2),
-          status: 'pending',
-          progress: 0,
-          type: getFileType(file)
-        });
-      }
-    });
-    
     setFiles(newFiles);
-    
-    // Start uploading the files
-    newFiles.forEach(fileObj => {
-      if (fileObj.status === 'pending') {
-        simulateUpload(fileObj.id);
-      }
-    });
+    processFiles(newFiles);
   };
 
-  // Determine file type from the extension
+  // Determine file type
   const getFileType = (file) => {
     const extension = file.name.split('.').pop().toLowerCase();
     
-    if (['pdf'].includes(extension)) {
-      return 'pdf';
-    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
-      return 'image';
-    } else if (['xlsx', 'xls', 'csv'].includes(extension)) {
-      return 'spreadsheet';
-    } else if (['doc', 'docx'].includes(extension)) {
-      return 'document';
-    } else if (['xml'].includes(extension)) {
-      return 'xml';
-    } else {
-      return 'other';
-    }
+    if (['pdf'].includes(extension)) return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) return 'image';
+    if (['xlsx', 'xls', 'csv'].includes(extension)) return 'spreadsheet';
+    if (['doc', 'docx'].includes(extension)) return 'document';
+    if (['xml'].includes(extension)) return 'xml';
+    return 'other';
   };
 
-  // Simulate file upload progress
-  const simulateUpload = (fileId) => {
-    let progress = 0;
-    
-    const interval = setInterval(() => {
-      progress += Math.random() * 10;
-      
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        
-        // Update file status
-        setFiles(prevFiles => prevFiles.map(f => {
-          if (f.id === fileId) {
-            return { ...f, status: 'uploaded', progress: 100 };
-          }
-          return f;
-        }));
-        
-        // Clear from progress tracking
-        setUploadProgress(prev => {
-          const updated = { ...prev };
-          delete updated[fileId];
-          return updated;
-        });
-      } else {
-        // Update progress
-        setUploadProgress(prev => ({
-          ...prev,
-          [fileId]: Math.round(progress)
-        }));
-      }
-    }, 200);
-  };
-
-  // Process the uploaded file
-  const handleProcessFile = (fileId) => {
-    const selectedFile = files.find(f => f.id === fileId);
-    if (!selectedFile || selectedFile.status !== 'uploaded') return;
-    
-    setProcessingFile(true);
-    
-    // Update file status to processing
-    setFiles(prevFiles => prevFiles.map(f => {
-      if (f.id === fileId) {
-        return { ...f, status: 'processing' };
-      }
-      return f;
-    }));
-    
-    setTimeout(() => {
-      // Update file status to processed
-      setFiles(prevFiles => prevFiles.map(f => {
-        if (f.id === fileId) {
-          return { ...f, status: 'processed' };
-        }
-        return f;
-      }));
-      if (selectedFile.type === 'spreadsheet' && selectedFile.file.name.endsWith('.csv')) {
-        console.log("here works4")
-        Papa.parse(selectedFile.file, {
+  // Process uploaded files
+  const processFiles = (filesToProcess) => {
+    filesToProcess.forEach(fileObj => {
+      if (fileObj.type === 'spreadsheet' && fileObj.file.name.endsWith('.csv')) {
+        Papa.parse(fileObj.file, {
           header: true,
           skipEmptyLines: true,
-          complete: ({ data }) => {
-            const row = data[0];                 // header‑level fields
-            const items = Object.entries(row)
-              .filter(([k]) => k.startsWith('itemDescription'))
-              .map(([k, v]) => {
-                const idx = k.replace('itemDescription', '');
-                return {
-                  description : v,
-                  quantity    : +row[`itemQuantity${idx}`]  || 0,
-                  unitPrice   : +row[`itemUnitPrice${idx}`] || 0,
-                  taxRate     : +row[`itemTaxRate${idx}`]   || 0
-                };
-              })
-              .filter(i => i.description);
-      
-            const subtotal = items.reduce((s,i)=>s+i.quantity*i.unitPrice, 0);
-            const tax      = items.reduce((s,i)=>s+i.quantity*i.unitPrice*(i.taxRate/100), 0);
-            const total    = subtotal + tax;
-            const issueDate = formatDate(row.issueDate)
-            const dueDate = formatDate(row.dueDate)
-
-            const extractedData = {
-              issueDate,
-              dueDate,
-              subtotal, tax, total,
-              status        : "pending",
-              notes         : row.notes,
-              terms         : row.terms,
-              items
-            };
-      
-            setProcessedData(extractedData);
-            setProcessingFile(false);
-            setFiles(prev => prev.map(f =>
-              f.id === fileId ? { ...f, status: 'processed' } : f));
+          complete: (results) => {
+            if (results.data.length > 0) {
+              const row = results.data[0];
+              const processedInvoiceData = extractInvoiceData(row);
+              setProcessedData(processedInvoiceData);
+            }
           },
-          error: () => alert('Could not read CSV - please check the format.')
+          error: (error) => {
+            console.error('CSV parsing error:', error);
+            alert('Could not read CSV - please check the format.');
+          }
         });
-        return;
       }
-    }, 2000);
+    });
   };
 
-  // Handle file deletion
-  const handleDeleteFile = (fileId) => {
-    setFiles(prevFiles => prevFiles.filter(f => f.id !== fileId));
-    
-    // If the deleted file is the one being processed, clear processed data
-    if (processedData && files.find(f => f.id === fileId)?.status === 'processed') {
-      setProcessedData(null);
-    }
+  // Extract invoice data from CSV row
+  const extractInvoiceData = (row) => {
+    // Basic invoice data extraction logic
+    const items = Object.entries(row)
+      .filter(([k]) => k.startsWith('itemDescription'))
+      .map(([k, v]) => {
+        const idx = k.replace('itemDescription', '');
+        return {
+          description: v,
+          quantity: +row[`itemQuantity${idx}`] || 0,
+          unitPrice: +row[`itemUnitPrice${idx}`] || 0,
+          taxRate: +row[`itemTaxRate${idx}`] || 0
+        };
+      })
+      .filter(i => i.description);
+
+    const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const tax = items.reduce((s, i) => s + i.quantity * i.unitPrice * (i.taxRate / 100), 0);
+    const total = subtotal + tax;
+
+    return {
+      issueDate: row.issueDate || new Date().toISOString().split('T')[0],
+      dueDate: row.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      subtotal,
+      tax,
+      total,
+      items
+    };
   };
 
+  // Create invoice
   const handleCreateInvoice = async () => {
-    if (!processedData) return;
-    setLoading(true)
+    if (!processedData || !clientId) return;
+
+    setLoading(true);
     try {
-
-      console.log('Form submitted with clientId:', clientId);
-      console.log('Available clients:', clients);
-
-      if (!clientId) {
-        setLoading(false)
-        return;
-      }
-      // Get client name for the invoice record
+      // Find selected client
       const selectedClient = clients.find(client => client.id.toString() === clientId.toString());
-      console.log(selectedClient)
       if (!selectedClient) {
-        setLoading(false)
-        console.error('Selected client not found:', clientId);
-        return;
+        throw new Error('Selected client not found');
       }
-      
-      console.log('Selected client:', selectedClient);
 
-      const cId = selectedClient.id;
-      const clientName = selectedClient.name || 'Unknown Client';
-      const clientCity = selectedClient.city || '';
-      const clientStreet = selectedClient.street || '';
-      const clientPostCode = selectedClient.postcode || '';
-      const clientEmail = selectedClient.email || '';
-      const clientTaxNumber = selectedClient.tax_number || ''; // Note: using tax_number from the database
-
-      const updatedData = {
+      // Prepare invoice data
+      const invoiceData = {
         ...processedData,
-        contactId: cId,
-        clientName: clientName,
-        clientCity: clientCity,
-        clientStreet: clientStreet,
-        clientPostCode: clientPostCode,
-        clientEmail: clientEmail,
-        clientTaxNumber: clientTaxNumber,
+        contactId: selectedClient.id,
+        clientName: selectedClient.name,
+        clientEmail: selectedClient.email,
+        clientCity: selectedClient.city,
+        clientStreet: selectedClient.street,
+        clientPostCode: selectedClient.postcode,
+        clientTaxNumber: selectedClient.tax_number
       };
-      
-      setProcessedData(updatedData);
-      // const res = await createInvoiceRequest(token, invoiceRecord);
-      const res = await fetch('http://localhost:5000/api/invoice/create', {
+
+      // Send invoice to backend
+      const response = await fetch('http://localhost:5000/api/invoice/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify(invoiceData)
       });
-      // const res = await fetch('http://localhost:5000/api/invoice/create', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body  : JSON.stringify(processedData),   // send the object you parsed
-      // });
 
-      if (!res.ok) {
-        throw new Error('Server responded ${res.status}');
+      if (!response.ok) {
+        throw new Error('Failed to create invoice');
       }
 
-      const { data } = await res.json();   // your backend returns { success, data }
-      console.log(data)
-      alert(`Invoice ${data.invoice_number} saved successfully!`);
-
-      // reset UI
-      setFiles([]);
-      setProcessedData(null);
-
-      // Redirect to invoice history page
+      const result = await response.json();
+      alert(`Invoice ${result.data.invoice_number} created successfully!`);
+      
+      // Navigate to invoice history
       navigate('/invoicehistory');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create invoice – see console for details.');
+    } catch (error) {
+      console.error('Invoice creation error:', error);
+      alert('Failed to create invoice');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
-  // Handle drag events
-  const handleDrag = (e) => {
+  // Drag and drop handlers
+  const handleDragOver = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    setDragActive(true);
   };
 
-  // Handle drop event
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
-    e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
+    if (e.dataTransfer.files.length > 0) {
+      handleFileUpload(Array.from(e.dataTransfer.files));
     }
   };
 
-  // Trigger the file input click
-  const handleButtonClick = () => {
-    fileInputRef.current.click();
-  };
-
-  // Get icon for file type
-  const getFileIcon = (type) => {
-    switch (type) {
-      case 'pdf':
-        return 'fa-file-pdf';
-      case 'image':
-        return 'fa-file-image';
-      case 'spreadsheet':
-        return 'fa-file-excel';
-      case 'document':
-        return 'fa-file-word';
-      case 'xml':
-        return 'fa-file-code';
-      default:
-        return 'fa-file';
+  // File input handler
+  const handleFileInputChange = (e) => {
+    if (e.target.files.length > 0) {
+      handleFileUpload(Array.from(e.target.files));
     }
   };
 
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+  // Remove file
+  const removeFile = (fileId) => {
+    setFiles(files.filter(f => f.id !== fileId));
     
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // If this was the only processed file, clear processed data
+    if (files.length === 1) {
+      setProcessedData(null);
+    }
   };
 
   return (
@@ -389,48 +231,17 @@ function InvoiceUpload() {
         </div>
         
         <div className="upload-container">
-          <div className="upload-options">
-            <h2>Upload Options</h2>
-            <div className="option-tabs">
-              <button 
-                className={`option-tab ${selectedInvoiceType === 'automatic' ? 'active' : ''}`}
-                onClick={() => setSelectedInvoiceType('automatic')}
-              >
-                <i className="fas fa-magic"></i> Automatic Extraction
-              </button>
-              <button 
-                className={`option-tab ${selectedInvoiceType === 'manual' ? 'active' : ''}`}
-                onClick={() => setSelectedInvoiceType('manual')}
-              >
-                <i className="fas fa-edit"></i> Manual Entry
-              </button>
-            </div>
-              
-            <div className="option-description">
-              {selectedInvoiceType === 'automatic' ? (
-                <p>
-                  Choose a client and then upload an invoice and we'll automatically extract the information. 
-                  Supported formats: PDF, Images (JPG, PNG), Excel, CSV, XML.
-                </p>
-              ) : (
-                <p>
-                  Choose a client and then upload an invoice as a reference and manually enter the information.
-                  Perfect for complex invoices or when automatic extraction doesn't work.
-                </p>
-              )}
-            </div>
-          </div>
-          
+          {/* Client Selection */}
           <div className="form-group">
-            <label htmlFor="clientId">Client</label>
+            <label htmlFor="clientId">Select Client (Must Select to Proceed)</label>
             <select
               id="clientId"
               name="clientId"
               value={clientId}
-              onChange={handleChange}
+              onChange={handleClientChange}
               required
             >
-              <option value="">Select a client</option>
+              <option value="">Choose a client</option>
               {clients.map(client => (
                 <option key={client.id} value={client.id}>
                   {client.name}
@@ -439,183 +250,97 @@ function InvoiceUpload() {
             </select>
           </div>
 
-          <div className="upload-area-container">
+          {/* Upload Area (only visible after client selection) */}
+          {clientId && (
             <div 
               className={`upload-area ${dragActive ? 'drag-active' : ''}`}
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
               <input 
                 type="file" 
                 ref={fileInputRef}
-                onChange={handleFileChange}
+                onChange={handleFileInputChange}
                 accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv,.doc,.docx,.xml"
-                className="file-input"
                 multiple
+                className="file-input"
               />
               
               <div className="upload-content">
-                <div className="upload-icon">
-                  <i className="fas fa-cloud-upload-alt"></i>
-                </div>
-                <h3>Drag & Drop Files Here</h3>
-                <p>Or</p>
+                <i className="fas fa-cloud-upload-alt upload-icon"></i>
+                <h3>Drag & Drop Invoice Files</h3>
+                <p>or</p>
                 <button 
-                  type="button"
+                  type="button" 
                   className="btn-primary"
-                  onClick={handleButtonClick}
+                  onClick={() => fileInputRef.current.click()}
                 >
                   Browse Files
                 </button>
                 <p className="upload-info">
-                  Supported formats: PDF, Images (JPG, PNG), Excel, CSV, XML
+                  Supported: PDF, JPG, PNG, Excel, CSV
                 </p>
               </div>
             </div>
-            
-            {files.length > 0 && (
-              <div className="uploaded-files">
-                <h3>Uploaded Files</h3>
-                <div className="files-list">
-                  {files.map((fileObj) => (
-                    <div key={fileObj.id} className={`file-item status-${fileObj.status}`}>
-                      <div className="file-icon">
-                        <i className={`fas ${getFileIcon(fileObj.type)}`}></i>
-                      </div>
-                      <div className="file-info">
-                        <div className="file-name">{fileObj.file.name}</div>
-                        <div className="file-meta">
-                          {formatFileSize(fileObj.file.size)} • {fileObj.type.toUpperCase()}
-                        </div>
-                        {fileObj.status === 'pending' && (
-                          <div className="file-progress">
-                            <div 
-                              className="progress-bar"
-                              style={{ width: `${uploadProgress[fileObj.id] || 0}%` }}
-                            ></div>
-                            <span className="progress-text">{uploadProgress[fileObj.id] || 0}%</span>
-                          </div>
-                        )}
-                        {fileObj.status === 'uploaded' && (
-                          <div className="file-status">
-                            <i className="fas fa-check-circle"></i> Upload Complete
-                          </div>
-                        )}
-                        {fileObj.status === 'processing' && (
-                          <div className="file-status">
-                            <i className="fas fa-spinner fa-spin"></i> Processing...
-                          </div>
-                        )}
-                        {fileObj.status === 'processed' && (
-                          <div className="file-status">
-                            <i className="fas fa-check-circle"></i> Processing Complete
-                          </div>
-                        )}
-                      </div>
-                      <div className="file-actions">
-                        {fileObj.status === 'uploaded' && (
-                          <button
-                            className="action-btn process-btn"
-                            onClick={() => handleProcessFile(fileObj.id)}
-                            title="Process File"
-                          >
-                            <i className="fas fa-cogs"></i>
-                          </button>
-                        )}
-                        <button
-                          className="action-btn delete-btn"
-                          onClick={() => handleDeleteFile(fileObj.id)}
-                          title="Delete File"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {processedData && (
-            <div className="extracted-data">
-              <h2>Extracted Invoice Data</h2>
-              <div className="data-preview">
-                <div className="preview-row">
-                  <div className="preview-label">Invoice Number:</div>
-                  <div className="preview-value">{processedData.invoiceNumber}</div>
-                </div>
-                <div className="preview-row">
-                  <div className="preview-label">Client:</div>
-                  <div className="preview-value">{processedData.client}</div>
-                </div>
-                <div className="preview-row">
-                  <div className="preview-label">Issue Date:</div>
-                  <div className="preview-value">{processedData.issueDate}</div>
-                </div>
-                <div className="preview-row">
-                  <div className="preview-label">Due Date:</div>
-                  <div className="preview-value">{processedData.dueDate}</div>
-                </div>
-                <div className="preview-row">
-                  <div className="preview-label">Total Amount:</div>
-                  <div className="preview-value">${processedData.total.toFixed(2)}</div>
-                </div>
-                <div className="preview-row">
-                  <div className="preview-label">Items:</div>
-                  <div className="preview-value">{processedData.items.length} items</div>
-                </div>
-                
-                {processedData.items.length > 0 && (
-                  <div className="items-preview">
-                    <h4>Line Items</h4>
-                    <table className="items-table">
-                      <thead>
-                        <tr>
-                          <th>Description</th>
-                          <th>Quantity</th>
-                          <th>Unit Price</th>
-                          <th>Tax Rate</th>
-                          <th>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {processedData.items.map((item, idx) => (
-                          <tr key={idx}>
-                            <td>{item.description}</td>
-                            <td>{item.quantity}</td>
-                            <td>${item.unitPrice.toFixed(2)}</td>
-                            <td>{item.taxRate}%</td>
-                            <td>${(item.quantity * item.unitPrice * (1 + item.taxRate/100)).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          )}
+
+          {/* Uploaded Files List */}
+          {files.length > 0 && (
+            <div className="uploaded-files">
+              <h3>Uploaded Files</h3>
+              {files.map(fileObj => (
+                <div key={fileObj.id} className="file-item">
+                  <div className="file-details">
+                    <div className="file-name">{fileObj.name}</div>
+                    <div className="file-type">{fileObj.type.toUpperCase()}</div>
                   </div>
-                )}
-                
-                <div className="data-actions">
                   <button 
-                    className="btn-primary"
-                    onClick={handleCreateInvoice}
+                    className="remove-file-btn"
+                    onClick={() => removeFile(fileObj.id)}
                   >
-                    <i className="fas fa-plus-circle"></i> Create Invoice
+                    <i className="fas fa-trash"></i>
                   </button>
-                  <Link to="/invoices/new" className="btn-secondary">
-                    <i className="fas fa-edit"></i> Edit Before Creating
-                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Processed Data Preview */}
+          {processedData && (
+            <div className="processed-data-preview">
+              <h3>Invoice Details</h3>
+              <div className="preview-section">
+                <div className="preview-row">
+                  <span>Subtotal:</span>
+                  <strong>${processedData.subtotal.toFixed(2)}</strong>
+                </div>
+                <div className="preview-row">
+                  <span>Tax:</span>
+                  <strong>${processedData.tax.toFixed(2)}</strong>
+                </div>
+                <div className="preview-row">
+                  <span>Total:</span>
+                  <strong>${processedData.total.toFixed(2)}</strong>
                 </div>
               </div>
+              
+              <button 
+                className="btn-primary create-invoice-btn"
+                onClick={handleCreateInvoice}
+              >
+                Create Invoice
+              </button>
             </div>
           )}
         </div>
+
+        {/* Loading Overlay */}
         {loading && (
           <div className="loading-overlay">
-            <div className="loading-content">
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p>Creating your invoice...</p>
+            <div className="loading-spinner">
+              <i className="fas fa-spinner fa-spin"></i>
+              <p>Creating Invoice...</p>
             </div>
           </div>
         )}

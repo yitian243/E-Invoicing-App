@@ -44,9 +44,7 @@ function InvoiceHistory() {
       }
       
       try {
-        console.log('Fetching invoices with token:', token);
         const response = await getInvoicesRequest(token);
-        console.log('Invoices response:', response);
         
         if (typeof response === 'number') {
           throw new Error(`Failed to fetch invoices: ${response}`);
@@ -54,7 +52,6 @@ function InvoiceHistory() {
         
         // Update the state with the fetched invoices
         setInvoices(response.data || []);
-        console.log('Invoices loaded:', response.data);
       } catch (error) {
         console.error('Error fetching invoices:', error);
         setError('Failed to load invoices. Please try again.');

@@ -15,6 +15,37 @@
   margin-bottom: 1.5rem;
 }
 
+.btn-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: #10316B;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+  background-color: #0D2755;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(16, 49, 107, 0.2);
+}
+
+.btn-edit:active {
+  transform: translateY(0);
+}
+
+.btn-edit i {
+  font-size: 1rem;
+  margin-right: 0.5rem;
+}
+
 /* Business Selector Styles */
 .business-selector {
   display: flex;
@@ -168,33 +199,54 @@
   font-style: italic;
 }
 
-.btn-edit {
+/* Member actions styling */
+.member-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.member-buttons {
+  display: flex;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background-color: #10316B;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  color: #10316B;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.btn-link:hover {
+  background-color: rgba(16, 49, 107, 0.1);
+}
+
+.text-danger {
+  color: #dc3545;
+}
+
+.text-danger:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.btn-danger {
+  padding: 0.3rem 0.8rem;
+  background-color: #dc3545;
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 500;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-edit:hover {
-  background-color: #0D2755;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(16, 49, 107, 0.2);
-}
-
-.btn-edit:active {
-  transform: translateY(0);
-}
-
-.btn-edit i {
-  font-size: 1rem;
+.btn-danger:hover {
+  background-color: #c82333;
 }
 
 .role-container {
@@ -203,22 +255,8 @@
   gap: 0.5rem;
 }
 
-.btn-change-role {
-  background: none;
-  border: none;
-  color: #10316B;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.btn-change-role:hover {
-  background-color: rgba(16, 49, 107, 0.1);
-}
-
 .role-select {
-  padding: 0.25rem;
+  padding: 0.25rem 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   background-color: white;
@@ -272,5 +310,11 @@
   
   .business-actions {
     flex-direction: column;
+  }
+  
+  .member-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
