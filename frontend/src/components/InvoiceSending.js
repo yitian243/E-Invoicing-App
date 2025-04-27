@@ -27,7 +27,6 @@ function InvoiceSending() {
     emailSubject: '',
     emailMessage: '',
     includePdfAttachment: true,
-    includePaymentLink: true,
     scheduleTime: '',
     autoReminders: false,
     reminderDays: 3,
@@ -229,7 +228,6 @@ ${businessName}`;
           subject: sendingOptions.emailSubject,
           message: sendingOptions.emailMessage,
           includePdfAttachment: sendingOptions.includePdfAttachment,
-          includePaymentLink: sendingOptions.includePaymentLink,
           scheduleTime: sendingOptions.scheduleTime,
           autoReminders: sendingOptions.autoReminders,
           reminderDays: sendingOptions.reminderDays,
@@ -566,17 +564,6 @@ ${businessName}`;
                               onChange={handleInputChange}
                             />
                             <label htmlFor="includeXmlAttachment">Attach invoice XML</label>
-                          </div>
-
-                          <div className="form-group checkbox-group">
-                            <input
-                              type="checkbox"
-                              id="includePaymentLink"
-                              name="includePaymentLink"
-                              checked={sendingOptions.includePaymentLink}
-                              onChange={handleInputChange}
-                            />
-                            <label htmlFor="includePaymentLink">Include payment link</label>
                           </div>
                         </div>
                       </div>
