@@ -14,6 +14,7 @@ import Login from './components/Login';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import Signup from './components/Signup';
+import InvoiceEditing from './components/InvoiceEditing'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="/Profile" element={<Profile />} />
               <Route path="/contacts" element={<Contacts />} />
               <Route path="/business" element={<Business />} />
+              <Route path="/invoices/edit" element={<InvoiceEditing />} />
             </Route>
             
             {/* Fallback route */}
