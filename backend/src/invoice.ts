@@ -1,7 +1,7 @@
-import { Request, Response, Router } from 'express';
-import { supabaseAdmin, supabase } from './db';
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { Request, Response, Router } from 'express';
+import nodemailer from 'nodemailer';
+import { supabase, supabaseAdmin } from './db';
 
 dotenv.config();
 

@@ -25,8 +25,8 @@ RUN npm ci
 COPY --from=builder /app/dist ./dist
 
 # # Copy entrypoint script
-# COPY docker-entrypoint.sh /docker-entrypoint.sh
-# RUN chmod +x /docker-entrypoint.sh
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Environment
 EXPOSE 5000

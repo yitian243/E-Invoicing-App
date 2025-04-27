@@ -13,8 +13,9 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - RESEND_FROM=${RESEND_FROM}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - EMAIL_FROM=${EMAIL_FROM}
     networks:
       - app-network
     restart: unless-stopped
