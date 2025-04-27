@@ -900,7 +900,6 @@ router.post('/send', async (req: Request, res: Response): Promise<void> => {
 
       // Send email
       const info = await transporter.sendMail(mailOptions);
-      console.log('Email sent:', info.messageId);
 
       // Update invoice status
       await supabaseAdmin

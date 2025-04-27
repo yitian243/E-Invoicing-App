@@ -143,9 +143,9 @@ function Profile() {
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image size must be less than 5MB');
+    // Check file size (max 5kB)
+    if (file.size > 5 * 1024) {
+      setError('Image size must be less than 5kB');
       return;
     }
 

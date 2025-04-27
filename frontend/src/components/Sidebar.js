@@ -90,18 +90,6 @@ function Sidebar() {
               <span>Contacts</span>
             </Link>
           </li>
-          <li className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
-            <Link to="/reports">
-              <i className="fas fa-chart-line"></i>
-              <span>Reports</span>
-            </Link>
-          </li>
-          <li className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
-            <Link to="/settings">
-              <i className="fas fa-cog"></i>
-              <span>Settings</span>
-            </Link>
-          </li>
           <li className={`nav-item ${isActive('/business') ? 'active' : ''}`}>
             <Link to="/business">
               <i className="fas fa-building"></i>

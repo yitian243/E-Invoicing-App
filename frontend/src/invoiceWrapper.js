@@ -7,8 +7,6 @@ const API_PREFIX = '/api/invoice';
  */
 export async function getContactsForInvoiceRequest(token) {
   try {
-    console.log('getContactsForInvoiceRequest called with token:', token);
-    console.log('Requesting URL:', `${BACKEND_URL}${API_PREFIX}/contacts`);
     
     if (!token) {
       console.error('No token provided to getContactsForInvoiceRequest');
@@ -23,10 +21,8 @@ export async function getContactsForInvoiceRequest(token) {
       },
     });
 
-    console.log('Response status:', response.status);
     
     const data = await response.json();
-    console.log('Response data:', data);
 
     if (!response.ok) {
       console.error('Error response from server:', data);
@@ -45,9 +41,6 @@ export async function getContactsForInvoiceRequest(token) {
  */
 export async function createInvoiceRequest(token, invoiceData) {
   try {
-    console.log('createInvoiceRequest called with token:', token);
-    console.log('Invoice data:', invoiceData);
-    console.log('Requesting URL:', `${BACKEND_URL}${API_PREFIX}/create`);
     
     if (!token) {
       console.error('No token provided to createInvoiceRequest');
@@ -62,11 +55,8 @@ export async function createInvoiceRequest(token, invoiceData) {
       },
       body: JSON.stringify(invoiceData),
     });
-
-    console.log('Response status:', response.status);
     
     const data = await response.json();
-    console.log('Response data:', data);
 
     if (!response.ok) {
       console.error('Error response from server:', data);
@@ -108,7 +98,6 @@ export async function deleteInvoiceRequest(token, id) {
  */
 export async function getInvoicesRequest(token) {
   try {
-    console.log('getInvoicesRequest called with token:', token);
     
     if (!token) {
       console.error('No token provided to getInvoicesRequest');
@@ -123,10 +112,8 @@ export async function getInvoicesRequest(token) {
       },
     });
 
-    console.log('Response status:', response.status);
     
     const data = await response.json();
-    console.log('Response data:', data);
 
     if (!response.ok) {
       console.error('Error response from server:', data);
