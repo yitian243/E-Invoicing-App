@@ -855,7 +855,7 @@ router.post('/send', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (invoice.status !== 'validated') {
+    if (invoice.status !== 'validated' || invoice.status !== 'sent') {
       res.status(400).json({ error: 'Invoice must be validated before sending' });
       return;
     }
