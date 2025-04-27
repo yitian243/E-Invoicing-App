@@ -137,7 +137,7 @@ ${businessName}`;
         
         // Filter for validated invoices
         const validInvoices = response.data.filter(inv => 
-          inv.status && inv.status === 'validated');
+          (inv.status && inv.status === 'validated') || (inv.status && inv.status === 'sent'));
         
         setInvoices(validInvoices);
         

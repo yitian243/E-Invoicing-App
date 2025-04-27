@@ -369,7 +369,7 @@ function InvoiceHistory() {
                                 </Link>
                               )}
                               
-                              {invoice.status === 'validated' && (
+                              {((invoice.status === 'validated') || (invoice.status === 'sent'))  && (
                                 <Link 
                                   to={`/invoicesending?invoiceId=${invoice.id}`}
                                   className="dropdown-item"
