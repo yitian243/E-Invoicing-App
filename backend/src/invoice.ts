@@ -195,7 +195,7 @@ router.post('/create', async (req: Request, res: Response) => {
         subtotal,
         tax,
         total,
-        status: status || 'pending', // Set default status to 'pending' if not provided
+        status: 'draft', // Set default status to 'draft' if not provided
         notes,
         terms,
         client_city: clientCity,
@@ -281,6 +281,7 @@ router.post('/create', async (req: Request, res: Response) => {
 
     // 3. Build DDD Invoice skeleton
     const skeleton: any = getNewData.Result?.Result?.Invoice?.Invoice || {};
+    console.log(skeleton)
     skeleton.DocBuyerOrderRef = "tes1234";
     skeleton.BuyerEmail = clientEmail;
     skeleton.BuyerVatNum = "AU1234567891";
@@ -928,5 +929,442 @@ router.post('/send', async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Failed to send', details: error.message });
   }
 });
+
+/**
+ * Route to edit an existing invoice
+ * @route PUT /api/invoice/edit
+ */
+router.put('/edit', async (req: Request, res: Response) => {
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    const userId = userData.user.id;
+    
+    // Find the business where the user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+    
+    if (memberError || !memberData || memberData.length === 0) {
+      return res.status(403).json({ error: 'User is not a member of any business' });
+    }
+    
+    // Use the first business where the user is a member
+    const businessId = memberData[0].business_id;
+    
+    const {
+      id, // invoice ID
+      invoice_number, // existing invoice number
+      contactId,
+      clientName,
+      clientCity,
+      clientStreet,
+      clientPostCode,
+      clientEmail,
+      clientTaxNumber,
+      issueDate,
+      dueDate,
+      subtotal,
+      tax,
+      total,
+      status,
+      items,
+      notes,
+      terms
+    } = req.body;
+
+    // Validate required fields including invoice_number and invoice ID
+    if (!id || !invoice_number || !contactId || !clientName || !clientCity || !clientStreet || 
+        !clientPostCode || !clientEmail || !clientTaxNumber || !issueDate || !dueDate ||
+        typeof subtotal !== 'number' ||
+        typeof tax !== 'number' ||
+        typeof total !== 'number' ||
+        !Array.isArray(items)
+    ) {
+      return res.status(400).json({ error: 'Invalid invoice data' });
+    }
+
+    // Validate items array
+    if (!items.every(item =>
+      item &&
+      typeof item === 'object' &&
+      item.description &&
+      typeof item.quantity === 'number' &&
+      typeof item.unitPrice === 'number' &&
+      typeof item.taxRate === 'number'
+    )) {
+      return res.status(400).json({ error: 'Invalid invoice items data' });
+    }
+
+    // 1. Get the existing invoice to calculate value differences
+    const { data: existingInvoice, error: invoiceError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoices')
+      .select('total, contact_id')
+      .eq('id', id)
+      .single();
+
+    if (invoiceError || !existingInvoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // 2. Update invoice in supabaseAdmin
+    const { data: updatedInvoice, error: updateError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoices')
+      .update({
+        client: clientName,
+        issue_date: issueDate,
+        due_date: dueDate,
+        subtotal,
+        tax,
+        total,
+        status: 'draft',
+        notes,
+        terms,
+        client_city: clientCity,
+        client_street: clientStreet,
+        client_post_code: clientPostCode,
+        client_email: clientEmail,
+        client_tax_number: clientTaxNumber,
+        business_id: businessId,
+        contact_id: contactId,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Error updating invoice:', updateError);
+      return res.status(500).json({ error: 'Failed to update invoice' });
+    }
+
+    // 3. Update contact's total value (difference between old and new total)
+    const valueDifference = total - existingInvoice.total;
+    if (valueDifference !== 0) {
+      const { data: contact, error: contactError } = await supabaseAdmin
+        .schema('business')
+        .from('contacts')
+        .select('total_value')
+        .eq('id', contactId)
+        .single();
+
+      if (!contactError && contact) {
+        await supabaseAdmin
+          .schema('business')
+          .from('contacts')
+          .update({
+            total_value: (contact.total_value || 0) + valueDifference
+          })
+          .eq('id', contactId);
+      }
+    }
+
+    // 4. Delete existing invoice items and add new ones
+    // First delete existing items
+    const { error: deleteItemsError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoice_items')
+      .delete()
+      .eq('invoice_id', id);
+
+    if (deleteItemsError) {
+      console.error('Error deleting existing invoice items:', deleteItemsError);
+    }
+
+    // Then add new items
+    const invoiceItems = items.map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      tax_rate: item.taxRate,
+      invoice_id: id,
+    }));
+
+    const { error: itemsError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoice_items')
+      .insert(invoiceItems);
+
+    if (itemsError) {
+      console.error('Error adding invoice items:', itemsError);
+    }
+
+      // 1. Fetch existing invoice by ID from Supabase
+  const { data: newInvoice, error: fetchError } = await supabaseAdmin
+  .schema('billing')
+  .from('invoices')
+  .select('id, invoice_number, client, issue_date, due_date, subtotal, tax, total, status, notes, terms, client_city, client_street, client_post_code, client_email, client_tax_number')  // Specify only the fields you want to retrieve
+  .eq('id', id) // Replace 'invoiceId' with the actual invoice ID you want to fetch
+  .single(); // Fetch a single result
+
+  if (fetchError || !newInvoice) {
+  console.error('Error fetching invoice:', fetchError);
+  return res.status(404).json({ error: 'Invoice not found' });
+  }
+
+    // 2. Prepare DDD Invoice request
+    const getNewResponse = await fetch(
+      'https://api.dddinvoices.com/api/service/EUeInvoices.DDDI_GetNew',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `IoT d8e42fd1-ad9b-441a-97f3-36adb311d862:EUeInvoices`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Complexity: 'Maximal',
+          IncludeInfo: false
+        })
+      }
+    );
+
+    const getNewData = await getNewResponse.json();
+
+    if (!getNewResponse.ok || getNewData.Status !== 'OK') {
+      return res.status(502).json({
+        success: true,
+        data: newInvoice,
+        warning: 'DDD Invoice creation failed',
+        dddError: getNewData
+      });
+    }
+
+    // 5. Prepare DDD Invoice request for update
+    const skeleton: any = getNewData.Result?.Result?.Invoice?.Invoice || {};
+    console.log(skeleton)
+    skeleton.DocBuyerOrderRef = "tes1234";
+    skeleton.BuyerEmail = clientEmail;
+    skeleton.BuyerVatNum = "AU1234567891";
+    skeleton.BuyerStreet = clientStreet;
+    skeleton.BuyerCity = clientCity;
+    skeleton.BuyerPostCode = clientPostCode;
+    skeleton.SellerVatNum = "AU12345678901";
+    skeleton.DocNumber = invoice_number;
+    skeleton.BuyerName = clientName;
+    skeleton.BuyerName = clientName;
+    skeleton.DocIssueDate = issueDate + 'T00:00:00';
+    skeleton.DocDueDate = dueDate;
+    skeleton.DocTotalVatAmount = tax;
+    skeleton.DocTotalAmount = total;
+    skeleton.DocCurrencyCode = 'AUD';
+    skeleton.DocTotalVatAmountCC = tax;
+    skeleton.DocNote = notes;
+    skeleton.BuyerTaxNum = clientTaxNumber;
+
+    skeleton._details = {
+      Items: items.map(item => ({
+        ItemName: item.description,
+        ItemQuantity: item.quantity,
+        ItemNetPrice: item.unitPrice,
+        ItemVatRate: item.taxRate,
+        ItemUmcCode: "piece",
+        ItemVatCode: item.taxRate.toString()
+      })),
+      Payments: [{
+        TypeOfPayment: "CREDITTRANSFER",
+        PayCode: "CREDITTRANSFER",
+        PayAmount: total
+      }]
+    };
+
+    // 6. Save updated invoice to DDD
+    const saveResponse = await fetch(
+      'https://api.dddinvoices.com/api/service/EUeInvoices.DDDI_Save',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `IoT d8e42fd1-ad9b-441a-97f3-36adb311d862:EUeInvoices`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Complexity: 'Maximal',
+          Steps: [35, 55, 85],
+          ReturnDoc: ['PDFP', 'XMLP'],
+          Object: {
+            Invoice: skeleton
+          }
+        })
+      }
+    );
+
+    const saveData = await saveResponse.json();
+
+    if (!saveResponse.ok || saveData.Status !== 'OK') {
+      return res.status(502).json({
+        success: true,
+        data: updatedInvoice,
+        warning: 'DDD Invoice update failed',
+        dddError: saveData
+      });
+    }
+
+    // 7. Fetch updated PDF and XML content from URLs
+    let pdfContent = null;
+    let xmlContent = null;
+    
+    try {
+      if (saveData.Result?.ReturnDoc?.PDFP) {
+        const pdfResponse = await fetch(saveData.Result.ReturnDoc.PDFP);
+        if (pdfResponse.ok) {
+          const pdfBuffer = await pdfResponse.arrayBuffer();
+          pdfContent = Buffer.from(pdfBuffer).toString('base64');
+        }
+      }
+      
+      if (saveData.Result?.ReturnDoc?.XMLP) {
+        const xmlResponse = await fetch(saveData.Result.ReturnDoc.XMLP);
+        if (xmlResponse.ok) {
+          xmlContent = await xmlResponse.text();
+        }
+      }
+    } catch (fetchError) {
+      console.error('Error fetching updated document content:', fetchError);
+    }
+    
+    // 8. Update invoice with new document content and URLs
+    const { error: docUpdateError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoices')
+      .update({
+        pdf_url: saveData.Result?.ReturnDoc?.PDFP,
+        xml_url: saveData.Result?.ReturnDoc?.XMLP,
+        pdf_content: pdfContent,
+        xml_content: xmlContent
+      })
+      .eq('id', id);
+
+    if (docUpdateError) {
+      console.error('Error updating invoice with document content:', docUpdateError);
+    }
+
+    // 9. Return combined response
+    res.status(200).json({
+      success: true,
+      data: {
+        ...updatedInvoice,
+        pdf_url: saveData.Result?.ReturnDoc?.PDFP,
+        xml_url: saveData.Result?.ReturnDoc?.XMLP,
+        has_pdf: !!pdfContent,
+        has_xml: !!xmlContent
+      },
+      dddResponse: saveData
+    });
+
+  } catch (error) {
+    console.error('Error updating invoice:', error);
+    res.status(500).json({
+      error: 'Failed to update invoice',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
+ * Route to get invoice by ID, including invoice items
+ * @route GET /api/invoice/get/:id
+ */
+router.get('/get/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get user_id from auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    // Get user from token
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+
+
+    const userId = userData.user.id;
+
+    // Find businesses where user is a member
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .schema('business')
+      .from('members')
+      .select('business_id')
+      .eq('user_id', userId);
+
+    if (memberError || !memberData || memberData.length === 0) {
+      res.status(403).json({ error: 'User is not a member of any business' });
+      return;
+    }
+
+    // Get all business IDs where user is a member
+    const businessIds = memberData.map(member => member.business_id);
+
+    // Get invoice ID from URL params
+    const invoiceId = req.params.id;
+
+    // Get the invoice by ID for these businesses
+    const { data: invoice, error } = await supabaseAdmin
+      .schema('billing')
+      .from('invoices')
+      .select('*')
+      .eq('id', invoiceId)
+      .in('business_id', businessIds)
+      .single();  // Use .single() to ensure we get a single record
+
+    if (error) {
+      console.error('Error fetching invoice:', error);
+      res.status(500).json({ error: 'Failed to fetch invoice' });
+      return;
+    }
+
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found' });
+      return;
+    }
+
+    // Fetch the invoice items associated with this invoice ID
+    const { data: invoiceItems, error: itemsError } = await supabaseAdmin
+      .schema('billing')
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoiceId);  // Match invoice items by invoice_id
+
+    if (itemsError) {
+      console.error('Error fetching invoice items:', itemsError);
+      res.status(500).json({ error: 'Failed to fetch invoice items' });
+      return;
+    }
+
+    // Return the invoice data along with the invoice items
+    res.status(200).json({
+      success: true,
+      data: {
+        invoice,
+        items: invoiceItems || []  // Include invoice items if available
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching invoice by ID:', error);
+    res.status(500).json({ error: 'Failed to fetch invoice by ID' });
+  }
+});
+
 
 export default router;

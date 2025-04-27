@@ -487,13 +487,6 @@ function InvoiceCreation() {
                 ) : (
                   'Create Invoice'
                 )}
-                {loading ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i> Creating Invoice...
-                  </>
-                ) : (
-                  'Create Invoice'
-                )}
               </button>
             </div>
           </form>

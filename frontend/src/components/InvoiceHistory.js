@@ -128,8 +128,8 @@ function InvoiceHistory() {
     switch (status) {
       case 'paid':
         return 'status-badge status-paid';
-      case 'pending':
-        return 'status-badge status-pending';
+      case 'draft':
+        return 'status-badge status-draft';
       case 'overdue':
         return 'status-badge status-overdue';
       case 'validated':
@@ -225,10 +225,10 @@ function InvoiceHistory() {
                 All
               </button>
               <button
-                className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
-                onClick={() => setFilter('pending')}
+                className={`filter-btn ${filter === 'draft' ? 'active' : ''}`}
+                onClick={() => setFilter('draft')}
               >
-                Pending
+                Draft
               </button>
               <button
                 className={`filter-btn ${filter === 'validated' ? 'active' : ''}`}
@@ -326,6 +326,14 @@ function InvoiceHistory() {
                           </button>
                           {openDropdownId === invoice.id && (
                             <div className="dropdown-menu show">
+                              {/* Add the Edit Invoice action at the top */}
+                              <Link 
+                                to={`/invoices/edit?invoiceId=${invoice.id}`}
+                                className="dropdown-item"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <i className="fas fa-edit"></i> Edit Invoice
+                              </Link>
                               {/* Use either the URL or the direct content endpoint */}
                               {invoice.pdf_url || invoice.pdf_content ? (
                                 <a 
@@ -359,7 +367,7 @@ function InvoiceHistory() {
                               )}
                               
                               {/* Add the new Validate/Send action */}
-                              {invoice.status === 'pending' && (
+                              {invoice.status === 'draft' && (
                                 <Link 
                                   to={`/invoicevalidation?invoiceId=${invoice.id}`}
                                   className="dropdown-item"
