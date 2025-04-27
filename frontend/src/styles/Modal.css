@@ -91,3 +91,66 @@
     color: #333;
     margin: 0;
   }
+
+
+  .modal-header {
+    background-color: #1e4283;
+    color: white;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3); /* Darker shadow */
+  }
+  
+  .modal-header h2 {
+    color: white;
+    font-weight: 500;
+  }
+  
+  .modal-close {
+    color: white;
+  }
+  
+  .modal-close:hover {
+    color: #f0f0f0;
+  }
+  
+  /* Blue button with white text */
+  .modal-buttons .btn-primary {
+    background-color: #1e4283;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Darker shadow */
+  }
+  
+  .modal-buttons .btn-primary:hover {
+    background-color: #173570;
+  }
+  
+  .modal-buttons .btn-primary:disabled {
+    background-color: #6c87b5;
+    cursor: not-allowed;
+  }
+  
+  /* Cancel button */
+  .modal-buttons .btn-secondary {
+    background-color: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .modal-buttons .btn-secondary:hover {
+    background-color: #e8e8e8;
+  }
+  
+  /* Make the modal container have a stronger shadow */
+  .modal-container {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  }

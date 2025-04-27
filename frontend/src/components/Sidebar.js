@@ -60,9 +60,6 @@ function Sidebar() {
               <Link to="/profile" className="dropdown-item">
                 <i className="fas fa-user"></i> My Profile
               </Link>
-              <Link to="/account-settings" className="dropdown-item">
-                <i className="fas fa-cog"></i> Account Settings
-              </Link>
               <div className="dropdown-divider"></div>
               <button onClick={handleLogout} className="dropdown-item logout-btn">
                 <i className="fas fa-sign-out-alt"></i> Logout

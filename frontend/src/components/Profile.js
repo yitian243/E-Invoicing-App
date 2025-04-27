@@ -174,31 +174,6 @@ function Profile() {
       };
       
       reader.readAsDataURL(file);
-      
-      // In a real application, you would upload the image to your server:
-      /*
-      const formData = new FormData();
-      formData.append('avatar', file);
-      
-      const response = await fetch(`${BACKEND_URL}/api/profile/${currentUser.id}/avatar`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload image');
-      }
-      
-      const result = await response.json();
-      setFormData({
-        ...formData,
-        avatar: result.avatarUrl
-      });
-      */
-      
     } catch (err) {
       console.error('Image upload failed:', err);
       setError('Failed to upload image: ' + err.message);
@@ -381,6 +356,13 @@ function Profile() {
                 </div>
               </div>
               
+              <div className="security-section">
+                <div className="change-password-option" onClick={openPasswordModal}>
+                  <i className="fas fa-lock"></i>
+                  <span>Change Password</span>
+                </div>
+              </div>
+              
               <div className="form-buttons">
                 <button 
                   type="button" 
@@ -467,18 +449,6 @@ function Profile() {
               ) : null}
             </div>
           )}
-          
-          <div className="profile-security">
-            <h3>Security Settings</h3>
-            <div className="security-options">
-              <button className="btn-outline" onClick={openPasswordModal}>
-                <i className="fas fa-lock"></i> Change Password
-              </button>
-              <button className="btn-outline">
-                <i className="fas fa-shield-alt"></i> Two-Factor Authentication
-              </button>
-            </div>
-          </div>
         </div>
       </main>
       

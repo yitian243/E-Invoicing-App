@@ -227,32 +227,49 @@
   font-size: 1.2rem;
 }
 
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-.detail-item.full-width {
-  grid-column: 1 / -1;
-}
-
-.detail-label {
+/* Updated Change Password Styling with Compact Design */
+.security-section {
+  margin: 20px 0;
+  padding: 15px;
+  border-top: 1px solid #eaeaea;
   display: flex;
+  justify-content: flex-start;
+}
+
+.change-password-option {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #666;
-  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 10px 15px;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: auto;
+  max-width: 200px;
 }
 
-.detail-label i {
-  width: 16px;
+.change-password-option:hover {
+  background-color: #f0f0f0;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
 }
 
-.detail-value {
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  color: #333;
+.change-password-option:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.change-password-option i {
+  margin-right: 10px;
+  color: #1e4283;
+  font-size: 16px;
+}
+
+.change-password-option span {
+  color: #1e4283;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Media Queries */
@@ -286,5 +303,9 @@
   
   .security-options button {
     width: 100%;
+  }
+  
+  .security-section {
+    justify-content: center;
   }
 }
