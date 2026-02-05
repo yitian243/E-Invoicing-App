@@ -1,6 +1,35 @@
-# SmartInvoice Application
+![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+# SmartInvoice App | UNSW Capstone Project
+**Full-Stack Invoice Management System**
 
-A modern invoice management system built with React and Node.js.
+## Project Overview
+SmartInvoice is a modern, containerized invoice management system designed to streamline business-to-client billing workflows. Developed as a **Capstone Project at UNSW (COMP3900)**, the application focuses on robust data persistence, secure user authentication, and an automated notification pipeline.
+
+## My Key Engineering Contributions
+While contributing to the full stack, I served as the **Feature Owner** for the core business domain, specifically managing the **Invoice and Contact modules**.
+
+### **Backend Architecture & Logic**
+* **RESTful API Design:** Architected and implemented secure endpoints for `/api/invoice` and `/api/contact` using **Node.js** and **Express**.
+* **State Management:** Developed the server-side logic to handle complex invoice lifecycle states (Draft, Sent, Paid, Overdue).
+* **Data Persistence:** Designed relational database interactions with **PostgreSQL (Supabase)** to ensure data integrity across client records and financial documents.
+* **Validation:** Implemented strict server-side validation to ensure invoice data compliance before processing and storage.
+
+### **Frontend Implementation**
+* **Functional Page Development:** Developed the primary React pages for Invoice Creation and Contact Management.
+* **Asynchronous Integration:** Integrated frontend forms with backend services, handling loading states and error boundaries for a seamless user experience.
+
+### **DevOps & Infrastructure**
+* **Containerization:** Configured multi-stage **Docker** builds for both frontend and backend to ensure a consistent environment from development to production.
+* **Environment Orchestration:** Managed service networking and volume persistence using **Docker Compose**.
+
+## 🛠 Tech Stack
+* **Frontend:** React.js, Nginx (Production)
+* **Backend:** Node.js, Express, TypeScript
+* **Database:** PostgreSQL (via Supabase)
+* **Infrastructure:** Docker, Docker Compose
+* **Notifications:** Resend API
 
 ## Features
 
@@ -158,3 +187,4 @@ The backend API provides the following endpoints:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
